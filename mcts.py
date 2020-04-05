@@ -115,9 +115,9 @@ class Node(object):
         if self.gameState.isCheckmate():
             self.isTerminal = True
             if self.gameState.turn == Turn.WHITE:
-                self.simReward = 1.0
+                self.simReward += 1.0
             else:
-                self.simReward = -1.0
+                self.simReward += -1.0
         else:
             if not self.hasEdgeTargets():
                 self.fillInEdgeTargets()#lazily expanding these nodes
@@ -134,7 +134,7 @@ class Node(object):
         """
         Updates our reward based on what a child sub-tree came back with
         """
-        raise NotImplementedError
+        self.simReward += childReward
 
 
 
