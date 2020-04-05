@@ -31,7 +31,7 @@ class Node(object):
         self.edges = [Edge(self, x) for x in moveList]
 
         for i, edge in enumerate(self.edges):
-            resultGameState = applyMove(self.gameState, moveList[i])
+            resultGameState = moveList[i].apply(self.gameState)
             edge.target = Node(resultGameState)
 
 
@@ -39,8 +39,6 @@ class Node(object):
 
 
 
-def setupLogging():
-    logging.basicConfig(level=logging.INFO, format='%(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
 
 def main():
     logging.info("Running main function in mcts")
