@@ -27,8 +27,8 @@ class Node(object):
         For the game state, figures out the possible moves, and creates edges from it
         Also creates empty nodes for the next level down
         """
-        moveList = getPossibleMoves(self.gameState)
-        self.edges = [Edge(self, x) for x in moveList]
+        moveList    = self.gameState.getPossibleMoves()
+        self.edges  = [Edge(self, x) for x in moveList]
 
         for i, edge in enumerate(self.edges):
             resultGameState = moveList[i].apply(self.gameState)

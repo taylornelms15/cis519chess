@@ -37,6 +37,11 @@ class GameState(object):
             self.possibleCastles = [True, True, True, True]#whether any of the four castle types can be done (only cares about whether the relevant pieces have moved previously, not the other castling rules)
 
 
+    def getPossibleMoves(self):
+        """
+        Given the current game state, returns a list of all possible moves that could be performed
+        """
+        raise NotImplementedError
 
 
 
