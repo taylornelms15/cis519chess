@@ -148,6 +148,7 @@ class Node(object):
 
 
 
+exampleWhiteCheckmate = "k7/8/1R6/8/3N4/8/8/7K w"#FEN string for chess board state where Nb5 checkmates
 
 def main():
     random.seed(0xbadbad)

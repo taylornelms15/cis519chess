@@ -4,7 +4,6 @@ import enum
 from log import setupLogging
 
 
-exampleWhiteCheckmate = "k7/8/1R6/8/3N4/8/8/7K w"#FEN string for chess board state where Nb5 checkmates
 
 
 class Turn(enum.Enum):
@@ -35,16 +34,18 @@ class GameState(object):
             else:
                 self.turn = Turn.WHITE
             self.possibleCastles = [x for x in startingFrom.possibleCastles]
+            self.halfmoveClock = startingFrom.halfmoveClock
 
         else:
             self.bitboards = [] #bitfields representing piece positions
             self.turn = Turn.WHITE #whose turn it is
             self.possibleCastles = [True, True, True, True]#whether any of the four castle types can be done (only cares about whether the relevant pieces have moved previously, not the other castling rules)
+            self.halfmoveClock = 0#number of half-moves (turns) since last pawn move or piece caputre, for determining draw (50-turn rule)
 
     # Functions to treat a GameState more atomically in dictionaries and whatnot
 
     def _key(self):
-        return (self.bitboards, self.turn, self.possileCastles)
+        return (self.bitboards, self.turn, self.possileCastles, self.halfmoveClock)
 
     def __hash__(self):
         return hash(self._key())
