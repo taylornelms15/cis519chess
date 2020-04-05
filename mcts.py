@@ -1,4 +1,5 @@
 import logging
+from log import setupLogging
 
 
 
@@ -42,11 +43,11 @@ def setupLogging():
     logging.basicConfig(level=logging.INFO, format='%(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
 
 def main():
-    setupLogging()
     logging.info("Running main function in mcts")
 
 
 
 
 if __name__ == "__main__":
+    setupLogging()
     main()
