@@ -1,8 +1,11 @@
 import logging
+import numpy as np
+
+
 from log import setupLogging
 
-
-
+DEFAULT_POLICY_WEIGHT = 1e-2
+EXPLORE_CONSTANT = 1e-1
 
 class Edge(object):
     def __init__(self, parent, move):
@@ -14,11 +17,14 @@ class Edge(object):
 
 class Node(object):
     
+    # Initialization
+
     def __init__(self, gameState):
-        self.gameState  = gameState
-        self.simReward  = 0.0
-        self.numVisits  = 0
-        self.edges      = []
+        self.gameState      = gameState
+        self.simReward      = 0.0
+        self.numVisits      = 0
+        self.edges          = []
+        self.policyWeights  = [] #if we've trained a policy network to start from, its weights go here
 
         self.initEdges()
 
@@ -34,6 +40,14 @@ class Node(object):
             resultGameState = moveList[i].apply(self.gameState)
             edge.target = Node(resultGameState)
 
+        self.policyWeights = [DEFAULT_POLICY_WEIGHT for x in self.edges]
+
+    # Accessors
+
+    def getNumVisits(self):
+        return self.numVisits
+
+    # Calculations
 
     def getExploitationTerm(self):
         """
@@ -43,6 +57,34 @@ class Node(object):
             return 0
         else:
             return self.simReward / self.numVisits
+
+    def getExplorationTerm(self, parent):
+        """
+        sqrt(N(v)/(1 + N(vi)))
+        """
+        return math.sqrt(parent.getNumVisits / (1.0 + self.getNumVisits()))
+
+    # Traversal
+
+    def getEdgeToTraverse(self):
+        """
+        Returns index of edge to go down
+        """
+
+        uctArray = np.zeros((len(self.edges)))
+
+        for i in range(len(self.edges)):
+            edge = self.edges[i]
+            nextState = edge.target
+            uct = nextState.getExploitationTerm() + EXPLORE_CONSTANT * self.policyWeights[i] * nextState.getExplorationTerm(self)
+            uctArray[i] = uct
+
+        return np.argmax(uctArray)
+
+        
+
+
+    
 
 
 
