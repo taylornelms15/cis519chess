@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import random
 
 
 from log import setupLogging
@@ -8,6 +9,8 @@ from GameState import Turn, Castle, GameState, Move
 
 DEFAULT_POLICY_WEIGHT = 1e-2
 EXPLORE_CONSTANT = 1e-1
+
+TERMINATION_CHANCE = 1e-3
 
 #Matches each game state (hashable, unaffected by training) to a node in our game tree
 STATE_TO_NODE_DICT = {}
@@ -27,7 +30,7 @@ class Node(object):
 
     def __init__(self, gameState):
         self.gameState      = gameState
-        self.simReward      = 0.0
+        self.qReward      = 0.0
         self.numVisits      = 0
         self.isTerminal     = True
         self.edges          = []
@@ -68,6 +71,9 @@ class Node(object):
     def getNumVisits(self):
         return self.numVisits
 
+    def getQReward(self):
+        return self.qReward
+
     # Calculations
 
     def getExploitationTerm(self):
@@ -77,7 +83,7 @@ class Node(object):
         if self.numVisits == 0:
             return 0
         else:
-            return self.simReward / self.numVisits
+            return self.qReward / self.numVisits
 
     def getExplorationTerm(self, parent):
         """
@@ -111,13 +117,16 @@ class Node(object):
         """
         Traverses the game tree starting at this node
         """
+        if random.random() <= TERMINATION_CHANCE:
+            return 0.0#pretend we didn't visit this node, call it a draw
+
         self.numVisits += 1
         if self.gameState.isCheckmate():
             self.isTerminal = True
             if self.gameState.turn == Turn.WHITE:
-                self.simReward += 1.0
+                self.qReward += 1.0
             else:
-                self.simReward += -1.0
+                self.qReward += -1.0
         else:
             if not self.hasEdgeTargets():
                 self.fillInEdgeTargets()#lazily expanding these nodes
@@ -128,19 +137,20 @@ class Node(object):
             self.updateWithNewChildReward(edgeToVisit, childReward)#backprop
 
 
-        return self.simReward
+        return self.qReward
         
     def updateWithNewChildReward(self, childIndex, childReward):
         """
         Updates our reward based on what a child sub-tree came back with
         """
-        self.simReward += childReward
+        self.qReward += childReward
 
 
 
 
 
 def main():
+    random.seed(0xbadbad)
     logging.info("Running main function in mcts")
 
 
