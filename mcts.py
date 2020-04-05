@@ -35,6 +35,14 @@ class Node(object):
             edge.target = Node(resultGameState)
 
 
+    def getExploitationTerm(self):
+        """
+        Q(v)/N(v)
+        """
+        if self.numVisits == 0:
+            return 0
+        else:
+            return self.simReward / self.numVisits
 
 
 
