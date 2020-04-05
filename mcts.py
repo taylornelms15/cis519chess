@@ -3,15 +3,21 @@ import numpy as np
 
 
 from log import setupLogging
+from GameState import Turn, Castle, GameState, Move
+
 
 DEFAULT_POLICY_WEIGHT = 1e-2
 EXPLORE_CONSTANT = 1e-1
 
+#Matches each game state (hashable, unaffected by training) to a node in our game tree
+STATE_TO_NODE_DICT = {}
+
 class Edge(object):
     def __init__(self, parent, move):
-        self.parent     = parent #the parent node game state
-        self.move       = move   #descriptor of the chess move to take
-        self.target     = None   #the game state this move would lead to
+        self.parent         = parent #the parent node game state
+        self.move           = move   #descriptor of the chess move to take
+        self.target         = None   #the game state this move would lead to
+        self.targetState    = None
 
 
 
@@ -23,6 +29,7 @@ class Node(object):
         self.gameState      = gameState
         self.simReward      = 0.0
         self.numVisits      = 0
+        self.isTerminal     = True
         self.edges          = []
         self.policyWeights  = [] #if we've trained a policy network to start from, its weights go here
 
@@ -38,9 +45,23 @@ class Node(object):
 
         for i, edge in enumerate(self.edges):
             resultGameState = moveList[i].apply(self.gameState)
-            edge.target = Node(resultGameState)
+            edge.targetState = resultGameState
+            edge.target = None#otherwise, will recursively create every possible game state from here
 
         self.policyWeights = [DEFAULT_POLICY_WEIGHT for x in self.edges]
+
+    def hasEdgeTargets(self):
+        if len(self.edges) == 0:
+            return True
+        if (self.edges[0].target == None):
+            return False
+        return True
+
+    def fillInEdgeTargets(self):
+        for edge in self.edges:
+            if edge.targetState not in STATE_TO_NODE_DICT:
+                STATE_TO_NODE_DICT[edge.targeState] =  Node(edge.targetState)
+            edge.target = STATE_TO_NODE_DICT[edge.targetState]
 
     # Accessors
 
@@ -75,16 +96,45 @@ class Node(object):
 
         for i in range(len(self.edges)):
             edge = self.edges[i]
-            nextState = edge.target
-            uct = nextState.getExploitationTerm() + EXPLORE_CONSTANT * self.policyWeights[i] * nextState.getExplorationTerm(self)
+            nextNode = edge.target
+            if nextNode.turn == Turn.WHITE:#flips reward valuation based on whose turn it is
+                exploitTerm = nextNode.getExploitationTerm()
+            else:
+                exploitTerm = -nextNode.getExploitationTerm()
+            uct = nextNode.getExploitationTerm() + EXPLORE_CONSTANT * self.policyWeights[i] * nextNode.getExplorationTerm(self)
             uctArray[i] = uct
 
         return np.argmax(uctArray)
 
+
+    def evaluateSubtree(self):
+        """
+        Traverses the game tree starting at this node
+        """
+        self.numVisits += 1
+        if self.gameState.isCheckmate():
+            self.isTerminal = True
+            if self.gameState.turn == Turn.WHITE:
+                self.simReward = 1.0
+            else:
+                self.simReward = -1.0
+        else:
+            if not self.hasEdgeTargets():
+                self.fillInEdgeTargets()#lazily expanding these nodes
+            
+            edgeToVisit = self.getEdgeToTraverse()
+
+            childReward = self.edges[edgeToVisit].target.evaluateSubtree()#RECURSIVE
+            self.updateWithNewChildReward(edgeToVisit, childReward)#backprop
+
+
+        return self.simReward
         
-
-
-    
+    def updateWithNewChildReward(self, childIndex, childReward):
+        """
+        Updates our reward based on what a child sub-tree came back with
+        """
+        raise NotImplementedError
 
 
 

@@ -1,6 +1,11 @@
 import logging
 import enum
+
 from log import setupLogging
+
+
+exampleWhiteCheckmate = "k7/8/1R6/8/3N4/8/8/7K w"#FEN string for chess board state where Nb5 checkmates
+
 
 class Turn(enum.Enum):
     WHITE = 0
