@@ -112,29 +112,51 @@ class GameState(object):
     def getHalfmoveClock(self):
         return self.halfmoveClock
 
+    def getPieceAtPosition(self, pos):
+        """
+        @return tuple of (color, pieceType)
+        """
+        if isinstance(pos, str):
+            pos = S2I(pos)
+
+        for i, board in enumerate(self.getBitboards()):
+            if board[pos] != Occupier.CLEAR:
+                return board[pos], PieceType(i)
+        return Occupier.CLEAR, None
+
     # Mutators
 
     def incHalfmoveClock(self):
         self.halfmoveClock += 1
 
-    def modCastleBecauseMove(self, posStr):
+    def modCastleBecauseMove(self, pos):
         """
         Modifies the castle table because the piece in the given position moved
         """
-        if posStr == "a1":
+        if isinstance(pos, str):
+            pos = S2I(pos)
+        if posStr == S2I("a1"):
             self.possibleCastles[Castles.WQUEEN] = False
-        elif posStr == "e1":
+        elif posStr == S2I("e1"):
             self.possibleCastles[Castles.WKING] = False
             self.possibleCastles[Castles.WQUEEN] = False
-        elif posStr == "h1":
+        elif posStr == S2I("h1"):
             self.possibleCastles[Castles.WKING] = False
-        elif posStr == "a8":
+        elif posStr == S2I("a8"):
             self.possibleCastles[Castles.BQUEEN] = False
-        elif posStr == "e8":
+        elif posStr == S2I("e8"):
             self.possibleCastles[Castles.BKING] = False
             self.possibleCastles[Castles.BQUEEN] = False
-        elif posStr == "h8":
+        elif posStr == S2I("h8"):
             self.possibleCastles[Castles.BKING] = False
+
+    def clearPieceInSpace(self, pos):
+        if isinstance(pos, str):
+            pos = S2I(pos)
+
+        boards = self.getBitboards()
+        for board in boards:
+            board[pos] = Occupier.CLEAR
 
     # Chess-specific functions
 
@@ -160,6 +182,10 @@ class Move(object):
     __slots__ = ["startLoc", "endLoc", "castle", "promotion"]
 
     def __init__(self, startLoc, endLoc, castle = None, promotion = None):
+        if isinstance(startLoc, str):
+            startLoc = S2I(startLoc)
+        if isinstance(endLoc, str):
+            endLoc = S2I(endLoc)
         self.startLoc   = startLoc
         self.endLoc     = endLoc
         self.castle     = castle
@@ -173,6 +199,12 @@ class Move(object):
 
     @classmethod
     def constructFromPgnHalfmove(cls, gameState, Piece, Rank, File, Endloc, Promotion):
+
+        if Piece == '':
+            Piece = PieceType.PAWN
+        else:
+            matchingTypes = [x for x in PIECELABELS.keys() if PIECELABELS[x][0] == Piece]
+            Piece = matchingTypes[0]
 
 
         pdb.set_trace()
@@ -229,8 +261,22 @@ class Move(object):
         if self.castle != None:
             return self._applyCastle(gameState)
 
+        retval = GameState(startingFrom = gameState)
+        retval.incHalfmoveClock()
 
-        raise NotImplementedError
+        #First: find what's moving (pick up piece)
+        color, pieceType = retval.getPieceAtPosition(self.startLoc)
+        if color == Occupier.CLEAR:
+            raise ValueError("Didn't find a piece at the startloc to move?")
+
+        #Clear spots for src and dest
+        retval.clearPieceInSpace(self.startLoc)
+        retval.clearPieceInSpace(self.endLoc)
+
+        #Put piece in correct spot
+        retval.getBitBoards()[pieceType] = color
+
+        return retval
 
   
 

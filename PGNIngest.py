@@ -36,12 +36,12 @@ def processPgnHalfmove(move, state):
     (Piece)(rank)(file)(x)[endloc](promotion)(check(m))
     """
     if move == "O-O":
-        if state.getTurn = Turn.WHITE:
+        if state.getTurn == Turn.WHITE:
             return Move.constructCastle(Castle.WKING)
         else:
             return Move.constructCastle(Castle.BKING)
     elif move == "O-O-O":
-        if state.getTurn = Turn.WHITE:
+        if state.getTurn == Turn.WHITE:
             return Move.constructCastle(Castle.WQUEEN)
         else:
             return Move.constructCastle(Castle.BQUEEN)
