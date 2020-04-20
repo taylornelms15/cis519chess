@@ -5,7 +5,7 @@ import random
 
 from log import setupLogging
 from GameState import Turn, Castle, GameState, Move
-from BitBoard import BitBoard, PieceType, Occupier
+from BitBoard import BitBoard, PieceType, Occupier, BitBoardsFromFenString
 
 
 DEFAULT_POLICY_WEIGHT = 1e-2
@@ -154,15 +154,12 @@ exampleWhiteCheckmate = "k7/8/1R6/8/3N4/8/8/7K w"#FEN string for chess board sta
 def main():
     random.seed(0xbadbad)
     logging.info("Running main function in mcts")
-    board = BitBoard(PieceType.PAWN, exampleWhiteCheckmate)
-    print(board.asFen())
-    print(str(board))
-    whitePos = board.getWhitePositions()
-    print(whitePos)
-    for pos in whitePos:
-        print(board[pos].name)
 
+    exampleBoards = BitBoardsFromFenString(exampleWhiteCheckmate)
 
+    logging.info(exampleBoards)
+    for board in exampleBoards:
+        logging.info(board)
 
 
 if __name__ == "__main__":

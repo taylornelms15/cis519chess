@@ -10,12 +10,12 @@ class Occupier(enum.IntEnum):
     BLACK = -1
 
 class PieceType(enum.IntEnum):
-    PAWN       = 0
-    ROOK       = 1
-    KNIGHT     = 2
-    BISHOP     = 3
-    QUEEN      = 4
-    KING       = 5
+    PAWN        = 0
+    ROOK        = 1
+    KNIGHT      = 2
+    BISHOP      = 3
+    QUEEN       = 4
+    KING        = 5
 
 #First letter is "white" label in FEN, second is "black"
 PIECELABELS = {PieceType.PAWN:      ["P", "p"],
@@ -26,6 +26,27 @@ PIECELABELS = {PieceType.PAWN:      ["P", "p"],
                PieceType.KING:      ['K', 'k']}
 
 FENParseString = "(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)\s*([w|b]*)\s*([KQkq]*)"  
+
+def BitBoardsFromFenString(fenString):
+    """
+    From a single FEN string, creates a set of 6 bit boards that represent that board state
+    """
+    retval = [None] * len(PieceType)
+
+    firstSectRegStr = "([^\s]+).*"
+    firstSect = re.match(firstSectRegStr, fenString).groups()[0]
+
+    for ptype in PieceType:
+        validChars = "012345678/%s%s" % (PIECELABELS[ptype][0], PIECELABELS[ptype][1])
+        regstr = "[^%s]" % validChars
+        thisSect = re.sub(regstr, "1", firstSect)
+
+        thisBoard = BitBoard(ptype, fenString = thisSect)
+        retval[ptype] = thisBoard
+
+    return retval   
+
+
 
 class BitBoard():
     """
@@ -98,6 +119,8 @@ class BitBoard():
     def asFen(self):
         """
         Quick and dirty way to get a FEN-style representation of this structure
+        This gets called by __repr__, so if we're doing it a lot,
+        we should be wary of the computational complexity, probably
         """
         retval = ""
         for i in range(self.board.shape[0]):
@@ -131,3 +154,7 @@ class BitBoard():
         retval = "<BitBoard %s\n%s>" % (self.pieceType.name, self.board)
         return retval
 
+    def __repr__(self):
+        retval = "<BitBoard %s>" % self.asFen()
+        return retval
+    
