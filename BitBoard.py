@@ -1,6 +1,7 @@
 import logging
 import enum
 import numpy as np
+import re
 
 
 class Occupier(enum.IntEnum):
@@ -24,16 +25,50 @@ PIECELABELS = {PieceType.PAWN:      ["P", "p"],
                PieceType.QUEEN:     ['Q', 'q'],
                PieceType.KING:      ['K', 'k']}
 
+FENParseString = "(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)\s*([w|b]*)\s*([KQkq]*)"  
+
 class BitBoard():
     """
     Class representing bitmap for a single piece type
     Filled with WHITE, CLEAR, or BLACK values
     """
     __slots__ = ["board", "pieceType"]
-    def __init__(self, pieceType):
+    def __init__(self, pieceType, fenString = None):
         self.board = np.zeros((8,8)).astype(np.int8)
         self.pieceType = pieceType
+
+        if fenString:
+            self.constructFromFen(fenString)
         
+    def constructFromFen(self, fenString):
+        """
+        Makes bitboard match the given fen string
+        assumes any capital letter is white, lowercase is black
+        """
+        #TODO: WAAAAAAY more error checking
+        regstr = FENParseString
+        fenMatches = re.match(regstr, fenString).groups()
+
+        for i in range(8):
+            thisRowFen = fenMatches[i]
+            pos = 0
+            for char in thisRowFen:
+                if re.match("\d", char):#if numeric
+                    numSpaces = int(char)
+                    for j in range(numSpaces):
+                        self.board[i][pos] = Occupier.CLEAR
+                        pos += 1
+                elif re.match("[A-Z]", char):#if capital
+                    self.board[i][pos] = Occupier.WHITE
+                    pos += 1
+                elif re.match("[a-z]", char):#if lowercase
+                    self.board[i][pos] = Occupier.BLACK
+                    pos += 1
+                else:
+                    raise ValueError("Invalid character %s in fen string" % char)
+
+
+
     def asFen(self):
         """
         Quick and dirty way to get a FEN-style representation of this structure
@@ -61,5 +96,5 @@ class BitBoard():
             if i != self.board.shape[0] - 1:
                 retval += '/'
 
-
         return retval
+

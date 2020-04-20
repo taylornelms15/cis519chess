@@ -2,6 +2,7 @@ import logging
 import enum
 
 from log import setupLogging
+from BitBoard import BitBoard
 
 
 
@@ -25,6 +26,7 @@ class Castle(enum.Enum):
     BQUEEN  = 3
 
 class GameState(object):
+    __slots__ = ['bitboards', 'turn', 'possibleCastles', 'halfmoveClock']
 
     def __init__(self, startingFrom = None):
         if startingFrom:
@@ -45,7 +47,7 @@ class GameState(object):
     # Functions to treat a GameState more atomically in dictionaries and whatnot
 
     def _key(self):
-        return (self.bitboards, self.turn, self.possileCastles, self.halfmoveClock)
+        return (self.bitboards, self.turn, self.possileCastles)#, self.halfmoveClock)
 
     def __hash__(self):
         return hash(self._key())
@@ -69,9 +71,16 @@ class GameState(object):
         """
         raise NotImplementedError
 
+    def isCheck(self):
+        """
+        Booleanfor whether this game state has the current player's king in check
+        """
+        raise NotImplementedError
+
 
 
 class Move(object):
+    __slots__ = ["startLoc", "endLoc"]
 
     def __init__(self, startLoc, endLoc):
         self.startLoc   = startLoc
