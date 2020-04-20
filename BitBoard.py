@@ -25,7 +25,7 @@ PIECELABELS = {PieceType.PAWN:      ["P", "p"],
                PieceType.QUEEN:     ['Q', 'q'],
                PieceType.KING:      ['K', 'k']}
 
-FENParseString = "(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)\s*([w|b]*)\s*([KQkq]*)"  
+FENParseString = "(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)\s*([w|b]*)\s*([KQkq-]*)"  
 
 def BitBoardsFromFenString(fenString):
     """
