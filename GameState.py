@@ -89,6 +89,20 @@ class GameState(object):
             return self._key() == other._key()
         return NotImplemented
 
+    # Accessors
+
+    def getBitboards(self):
+        return self.bitboards
+
+    def getTurn(self):
+        return self.turn
+
+    def getPossibleCastles(self):
+        return self.possibleCastles
+
+    def getHalfmoveClock(self):
+        return self.halfmoveClock
+
     # Chess-specific functions
 
     def getPossibleMoves(self):
