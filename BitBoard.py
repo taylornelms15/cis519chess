@@ -98,3 +98,10 @@ class BitBoard():
 
         return retval
 
+    def __str__(self):
+        """
+        Note: Board may look flipped due to numpy array indexing
+        """
+        retval = "<BitBoard %s\n%s>" % (self.pieceType.name, self.board)
+        return retval
+

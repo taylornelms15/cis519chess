@@ -156,6 +156,7 @@ def main():
     logging.info("Running main function in mcts")
     board = BitBoard(PieceType.PAWN, exampleWhiteCheckmate)
     print(board.asFen())
+    print(str(board))
 
 
 
