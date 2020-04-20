@@ -5,6 +5,7 @@ import re
 from log import setupLogging
 from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString
 
+import pdb
 
 
 
@@ -132,12 +133,13 @@ class GameState(object):
         raise NotImplementedError
 
 class Move(object):
-    __slots__ = ["startLoc", "endLoc", "promotion"]
+    __slots__ = ["startLoc", "endLoc", "castle", "promotion"]
 
-    def __init__(self, startLoc, endLoc, promotion = None):
+    def __init__(self, startLoc, endLoc, castle = None, promotion = None):
         self.startLoc   = startLoc
         self.endLoc     = endLoc
-        self.promotion  = None
+        self.castle     = castle
+        self.promotion  = promotion
 
 
     def apply(self, gameState):
@@ -147,6 +149,17 @@ class Move(object):
 
         @return The GameState after this move is applied
         """
+        raise NotImplementedError
+
+    @classmethod
+    def constructCastle(cls, castleType):
+        return Move(None, None, castleType, None)
+
+    @classmethod
+    def constructFromPgnHalfmove(cls, gameState, Piece, Rank, File, Endloc, Promotion):
+
+
+        pdb.set_trace()
         raise NotImplementedError
   
 

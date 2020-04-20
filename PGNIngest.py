@@ -14,7 +14,8 @@ import torch
 import argparse
 
 from log import setupLogging
-from GameState import GameState, Move
+from GameState import GameState, Move, Castle
+from BitBoard import PieceType
 
 import pdb
 
@@ -28,11 +29,28 @@ ENDING_TYPES = {'White checkmated'          : -1,
 #Want pairings of state->move
 #Don't care about rewards at this point; imitation learning should contain those
 
-def processPgnHalfmove(move, state):
-    
 
-    raise NotImplementedError
-    return startLoc, endLoc, promo
+def processPgnHalfmove(move, state):
+    """
+    Halfmove format:
+    (Piece)(rank)(file)(x)[endloc](promotion)(check(m))
+    """
+    if move == "O-O":
+        if state.getTurn = Turn.WHITE:
+            return Move.constructCastle(Castle.WKING)
+        else:
+            return Move.constructCastle(Castle.BKING)
+    elif move == "O-O-O":
+        if state.getTurn = Turn.WHITE:
+            return Move.constructCastle(Castle.WQUEEN)
+        else:
+            return Move.constructCastle(Castle.BQUEEN)
+
+    regstr = "([QKNRB]?)([a-h]?)([1-8]?)x?([a-h][1-8])((?=QNRB)?)[+#]?"
+    match = re.match(regstr, move)
+    Piece, Rank, File, Endloc, Promotion = match.groups()
+
+    return Move.constructFromPgnHalfmove(state, Piece, Rank, File, Endloc, Promotion)
 
 def moveListFromGameLine(gLine):
     """
@@ -47,7 +65,6 @@ def moveListFromGameLine(gLine):
 
     movePairs = []
 
-    pdb.set_trace()
     gameState = GameState.getInitialState()
     for turnString in wholeTurns:
 
@@ -55,14 +72,12 @@ def moveListFromGameLine(gLine):
         mW = halfMoves[0]
         mB = None if len(halfMoves) < 2 else halfMoves[1]
 
-        startLoc, endLoc, promo = processPgnHalfmove(mW)
-        moveW = Move(startLoc, endLoc, promo)
+        moveW = processPgnHalfmove(mW, gameState)
         movePairs.append( (gameState, moveW) )     
         gameState = moveW.apply(gameState)
 
         if mB:
-            startLoc, endLoc, promo = processPgnHalfmove(mB)
-            moveB = Move(startLoc, endLoc, promo)
+            moveB = processPgnHalfmove(mB, gameState)
             movePairs.append( (gameState, moveB) )     
             gameState = moveB.apply(gameState)
             
