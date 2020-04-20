@@ -157,6 +157,10 @@ def main():
     board = BitBoard(PieceType.PAWN, exampleWhiteCheckmate)
     print(board.asFen())
     print(str(board))
+    whitePos = board.getWhitePositions()
+    print(whitePos)
+    for pos in whitePos:
+        print(board[pos].name)
 
 
 

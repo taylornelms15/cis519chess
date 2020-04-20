@@ -33,6 +33,12 @@ class BitBoard():
     Filled with WHITE, CLEAR, or BLACK values
     """
     __slots__ = ["board", "pieceType"]
+
+
+    ################################
+    # CONSTRUCTOR
+    ################################
+
     def __init__(self, pieceType, fenString = None):
         self.board = np.zeros((8,8)).astype(np.int8)
         self.pieceType = pieceType
@@ -40,6 +46,28 @@ class BitBoard():
         if fenString:
             self.constructFromFen(fenString)
         
+    ################################
+    # QUICK ACCESSORS
+    ################################
+
+    def __getitem__(self, key):
+        """
+        Allows indexing into our board array more or less directly
+        """
+        return Occupier(self.board[key])
+
+    def getWhitePositions(self):
+        rowPos, colPos = np.where(np.equal(self.board, Occupier.WHITE))
+        return list(zip(rowPos, colPos))
+
+    def getBlackPositions(self):
+        rowPos, colPos = np.where(np.equal(self.board, Occupier.BLACK))
+        return list(zip(rowPos, colPos))
+ 
+    ################################
+    # STRING REPRESENTATIONS
+    ################################
+
     def constructFromFen(self, fenString):
         """
         Makes bitboard match the given fen string
@@ -66,8 +94,6 @@ class BitBoard():
                     pos += 1
                 else:
                     raise ValueError("Invalid character %s in fen string" % char)
-
-
 
     def asFen(self):
         """

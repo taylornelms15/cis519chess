@@ -2,7 +2,7 @@ import logging
 import enum
 
 from log import setupLogging
-from BitBoard import BitBoard
+from BitBoard import BitBoard, PieceType
 
 
 
