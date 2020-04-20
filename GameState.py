@@ -28,6 +28,7 @@ class Castle(enum.IntEnum):
 
 class GameState(object):
     __slots__ = ['bitboards', 'turn', 'possibleCastles', 'halfmoveClock']
+    initialBoardFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
     def __init__(self, startingFrom = None, fenString = None):
         if startingFrom:
@@ -71,6 +72,13 @@ class GameState(object):
         if re.match("q", castleString) != None:
             retval[Castle.BQUEEN] = True
         return retval
+
+    @classmethod
+    def getInitialState(cls):
+        """
+        Class constructor that creates the state of the initial chess board
+        """
+        return GameState(fenString = cls.initialBoardFen)    
 
     # Functions to treat a GameState more atomically in dictionaries and whatnot
 
@@ -123,14 +131,13 @@ class GameState(object):
         """
         raise NotImplementedError
 
-
-
 class Move(object):
-    __slots__ = ["startLoc", "endLoc"]
+    __slots__ = ["startLoc", "endLoc", "promotion"]
 
-    def __init__(self, startLoc, endLoc):
+    def __init__(self, startLoc, endLoc, promotion = None):
         self.startLoc   = startLoc
         self.endLoc     = endLoc
+        self.promotion  = None
 
 
     def apply(self, gameState):
@@ -155,11 +162,10 @@ class Move(object):
 
 
 
-initialBoardFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 
 def main():
-    myState = GameState(fenString = initialBoardFen)
+    myState = GameState.getInitialState()
     logging.info(myState)
 
 

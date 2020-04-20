@@ -14,6 +14,7 @@ import torch
 import argparse
 
 from log import setupLogging
+from GameState import GameState, Move
 
 import pdb
 
@@ -27,8 +28,47 @@ ENDING_TYPES = {'White checkmated'          : -1,
 #Want pairings of state->move
 #Don't care about rewards at this point; imitation learning should contain those
 
+def processPgnHalfmove(move, state):
+    
+
+    raise NotImplementedError
+    return startLoc, endLoc, promo
+
 def moveListFromGameLine(gLine):
-    pass
+    """
+    This will actually need to keep track of the game state, because it affects how the moves get recorded
+    """
+
+    turnRegex = "\s*\d+\.\s"
+    wholeTurns = re.split(turnRegex, gLine)[1:]#get rid of leading ''
+
+    logging.info(gLine)
+    logging.info(wholeTurns)
+
+    movePairs = []
+
+    pdb.set_trace()
+    gameState = GameState.getInitialState()
+    for turnString in wholeTurns:
+
+        halfMoves = re.split(' ', turnString)
+        mW = halfMoves[0]
+        mB = None if len(halfMoves) < 2 else halfMoves[1]
+
+        startLoc, endLoc, promo = processPgnHalfmove(mW)
+        moveW = Move(startLoc, endLoc, promo)
+        movePairs.append( (gameState, moveW) )     
+        gameState = moveW.apply(gameState)
+
+        if mB:
+            startLoc, endLoc, promo = processPgnHalfmove(mB)
+            moveB = Move(startLoc, endLoc, promo)
+            movePairs.append( (gameState, moveB) )     
+            gameState = moveB.apply(gameState)
+            
+
+
+    return None
 
 def processGameLine(line):
     regstr = "(.*?)\s+{(.*?)}\s+(.*)"
