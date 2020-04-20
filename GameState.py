@@ -3,7 +3,7 @@ import enum
 import re
 
 from log import setupLogging
-from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString
+from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString, S2I, Occupier
 
 import pdb
 
@@ -33,7 +33,7 @@ class GameState(object):
 
     def __init__(self, startingFrom = None, fenString = None):
         if startingFrom:
-            self.bitboards = [x for x in startingFrom.bitboards]#should do a copy of these, rather than by-reference
+            self.bitboards = [np.copy(x) for x in startingFrom.bitboards]#should do a copy of these, rather than by-reference
             if startingFrom.turn == Turn.WHITE:
                 self.turn = Turn.BLACK
             else:
@@ -112,6 +112,30 @@ class GameState(object):
     def getHalfmoveClock(self):
         return self.halfmoveClock
 
+    # Mutators
+
+    def incHalfmoveClock(self):
+        self.halfmoveClock += 1
+
+    def modCastleBecauseMove(self, posStr):
+        """
+        Modifies the castle table because the piece in the given position moved
+        """
+        if posStr == "a1":
+            self.possibleCastles[Castles.WQUEEN] = False
+        elif posStr == "e1":
+            self.possibleCastles[Castles.WKING] = False
+            self.possibleCastles[Castles.WQUEEN] = False
+        elif posStr == "h1":
+            self.possibleCastles[Castles.WKING] = False
+        elif posStr == "a8":
+            self.possibleCastles[Castles.BQUEEN] = False
+        elif posStr == "e8":
+            self.possibleCastles[Castles.BKING] = False
+            self.possibleCastles[Castles.BQUEEN] = False
+        elif posStr == "h8":
+            self.possibleCastles[Castles.BKING] = False
+
     # Chess-specific functions
 
     def getPossibleMoves(self):
@@ -141,16 +165,8 @@ class Move(object):
         self.castle     = castle
         self.promotion  = promotion
 
-
-    def apply(self, gameState):
-        """
-        Applies the move of the piece from startLoc to endLoc
-        Does not check if the move is legal
-
-        @return The GameState after this move is applied
-        """
-        raise NotImplementedError
-
+    # SPECIAL CONSTRUCTORS
+     
     @classmethod
     def constructCastle(cls, castleType):
         return Move(None, None, castleType, None)
@@ -161,6 +177,61 @@ class Move(object):
 
         pdb.set_trace()
         raise NotImplementedError
+
+    # APPLYING GAME STATE TRANSFORMATIONS
+
+    def _applyCastle(self, gameState):
+        retval = GameState(startingFrom = gameState)
+        retval.incHalfmoveClock()
+        boards = retval.getBitboards()
+        if self.castle == Castle.WKING:
+            boards[PieceType.KING][S2I('e1')] = Occupier.CLEAR
+            boards[PieceType.ROOK][S2I('h1')] = Occupier.CLEAR
+            boards[PieceType.KING][S2I('g1')] = Occupier.WHITE
+            boards[PieceType.ROOK][S2I('f1')] = Occupier.WHITE
+            retval.modCastleBecauseMove("e1")
+            retval.modCastleBecauseMove("h1")
+            return retval
+        elif self.castle == Castle.WQUEEN:
+            boards[PieceType.KING][S2I('e1')] = Occupier.CLEAR
+            boards[PieceType.ROOK][S2I('a1')] = Occupier.CLEAR
+            boards[PieceType.KING][S2I('c1')] = Occupier.WHITE
+            boards[PieceType.ROOK][S2I('d1')] = Occupier.WHITE
+            retval.modCastleBecauseMove("e1")
+            retval.modCastleBecauseMove("a1")
+            return retval
+        elif self.castle == Castle.BKING:
+            boards[PieceType.KING][S2I('e8')] = Occupier.CLEAR
+            boards[PieceType.ROOK][S2I('h8')] = Occupier.CLEAR
+            boards[PieceType.KING][S2I('g8')] = Occupier.BLACK
+            boards[PieceType.ROOK][S2I('f8')] = Occupier.BLACK
+            retval.modCastleBecauseMove("e8")
+            retval.modCastleBecauseMove("h8")
+            return retval
+        elif self.castle == Castle.BQUEEN:
+            boards[PieceType.KING][S2I('e8')] = Occupier.CLEAR
+            boards[PieceType.ROOK][S2I('a8')] = Occupier.CLEAR
+            boards[PieceType.KING][S2I('c8')] = Occupier.BLACK
+            boards[PieceType.ROOK][S2I('d8')] = Occupier.BLACK
+            retval.modCastleBecauseMove("e8")
+            retval.modCastleBecauseMove("a8")
+            return retval
+        else:
+            raise ValueError("Applying a castle move in not a castle move (????)")
+
+    def apply(self, gameState):
+        """
+        Applies the move of the piece from startLoc to endLoc
+        Does not check if the move is legal
+
+        @return The GameState after this move is applied
+        """
+        if self.castle != None:
+            return self._applyCastle(gameState)
+
+
+        raise NotImplementedError
+
   
 
 
@@ -180,6 +251,8 @@ class Move(object):
 def main():
     myState = GameState.getInitialState()
     logging.info(myState)
+
+    print(S2I("e2"))
 
 
 

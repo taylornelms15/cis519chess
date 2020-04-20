@@ -17,6 +17,14 @@ class PieceType(enum.IntEnum):
     QUEEN       = 4
     KING        = 5
 
+def S2I(posString):
+    """
+    (String 2 Index)
+    Turns a string representing a position to an index that
+    can be used to index into a bitboard
+    """
+    return ((ord(posString[0]) - ord('a')), (ord(posString[1]) - ord('1')))
+
 #First letter is "white" label in FEN, second is "black"
 PIECELABELS = {PieceType.PAWN:      ["P", "p"],
                PieceType.ROOK:      ['R', 'r'],
