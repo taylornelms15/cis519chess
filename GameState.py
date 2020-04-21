@@ -124,6 +124,21 @@ class GameState(object):
                 return board[pos], PieceType(i)
         return Occupier.CLEAR, None
 
+    def getPawns(self, color = Occupier.CLEAR):
+        return self.bitboards[PieceType.PAWN].getPositionsOf(color)
+    def getRooks(self, color = Occupier.CLEAR):
+        return self.bitboards[PieceType.ROOK].getPositionsOf(color)
+    def getKnights(self, color = Occupier.CLEAR):
+        return self.bitboards[PieceType.KNIGHT].getPositionsOf(color)
+    def getBishops(self, color = Occupier.CLEAR):
+        return self.bitboards[PieceType.BISHOP].getPositionsOf(color)
+    def getQueens(self, color = Occupier.CLEAR):
+        return self.bitboards[PieceType.QUEEN].getPositionsOf(color)
+    def getKings(self, color = Occupier.CLEAR):
+        return self.bitboards[PieceType.KING].getPositionsOf(color)
+    def getPiecesOfColor(self, pieceType, color = Occupier.CLEAR):
+        return self.bitboards[pieceType].getPositionsOf(color)
+
     # Mutators
 
     def incHalfmoveClock(self):
@@ -205,9 +220,15 @@ class Move(object):
         else:
             matchingTypes = [x for x in PIECELABELS.keys() if PIECELABELS[x][0] == Piece]
             Piece = matchingTypes[0]
+        if Promotion != '':
+            matchingTypes = [x for x in PIECELABELS.keys() if PIECELABELS[x][0] == Piece]
+            Promotion = matchingTypes[0]
 
 
         pdb.set_trace()
+
+
+        retval = Move(startLoc, S2I(EndLoc), None, Promotion)
         raise NotImplementedError
 
     # APPLYING GAME STATE TRANSFORMATIONS

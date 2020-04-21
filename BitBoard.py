@@ -92,6 +92,20 @@ class BitBoard():
     def getBlackPositions(self):
         rowPos, colPos = np.where(np.equal(self.board, Occupier.BLACK))
         return list(zip(rowPos, colPos))
+
+    def getAllPositions(self):
+        rowPos, colPos = np.where(np.logical_not(np.equal(self.board, Occupier.CLEAR)))
+        return list(zip(rowPos, colPos))
+
+    def getPositionsOf(self, color):
+        if color == Occupier.WHITE:
+            return self.getWhitePositions()
+        elif color == Occupier.BLACK:
+            return self.getBlackPositions()
+        elif color == Occupier.CLEAR:
+            returl self.getAllPositions()
+        else:
+            raise ValueError
  
     ################################
     # STRING REPRESENTATIONS
