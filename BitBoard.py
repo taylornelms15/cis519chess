@@ -23,7 +23,14 @@ def S2I(posString):
     Turns a string representing a position to an index that
     can be used to index into a bitboard
     """
-    return ((ord(posString[0]) - ord('1')), (ord(posString[1]) - ord('a')))
+    return ((ord(posString[1]) - ord('1')), (ord(posString[0]) - ord('a')))
+
+def I2S(posTuple):
+    """
+    (Index 2 String)
+    Reverse of the above
+    """
+    return "%s%s" % (chr(posTuple[1] + ord('a')), chr(posTuple[0] + ord('0')))
 
 #First letter is "white" label in FEN, second is "black"
 PIECELABELS = {PieceType.PAWN:      ["P", "p"],
@@ -56,7 +63,7 @@ def BitBoardsFromFenString(fenString):
 
 
 
-class BitBoard():
+class BitBoard(object):
     """
     Class representing bitmap for a single piece type
     Filled with WHITE, CLEAR, or BLACK values
@@ -86,7 +93,12 @@ class BitBoard():
         """
         Allows indexing into our board array more or less directly
         """
+        if key == ():
+            return self
         return Occupier(self.board[key])
+
+    def __setitem__(self, key, value):
+        self.board[key] = Occupier(value)
 
     def getWhitePositions(self):
         rowPos, colPos = np.where(np.equal(self.board, Occupier.WHITE))
@@ -167,7 +179,8 @@ class BitBoard():
 
             if runningTotal > 0:
                 retval += str(runningTotal)
-            if i != self.board.shape[0] - 1:
+            #if i != self.board.shape[0] - 1:
+            if i != 0:
                 retval += '/'
 
         return retval

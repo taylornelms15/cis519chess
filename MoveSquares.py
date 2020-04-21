@@ -35,7 +35,7 @@ def _makeMoveMaskPawnB(idx, gameState):
         occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
         if occupierColor == Occupier.CLEAR:
             retval[tuple(idxTemp)] = True
-            if idx[1] == 6:
+            if idx[0] == 6:
                 idxTemp = idxTemp + PAWN_BM_DIRS[0]
                 occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
                 if occupierColor == Occupier.CLEAR:
@@ -58,7 +58,7 @@ def _makeMoveMaskPawnW(idx, gameState):
         occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
         if occupierColor == Occupier.CLEAR:
             retval[tuple(idxTemp)] = True
-            if idx[1] == 1:
+            if idx[0] == 1:
                 idxTemp = idxTemp + PAWN_WM_DIRS[0]
                 occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
                 if occupierColor == Occupier.CLEAR:
@@ -92,11 +92,9 @@ def _makeMoveMaskKing(color, idx, gameState):
             elif occupierColor == Occupier.WHITE:
                 if color == Occupier.BLACK:
                     retval[tuple(idxTemp)] = True
-                break
             elif occupierColor == Occupier.BLACK:
                 if color == Occupier.WHITE:
                     retval[tuple(idxTemp)] = True
-                break
             else:
                 raise ValueError
     return retval
@@ -113,11 +111,9 @@ def _makeMoveMaskKnight(color, idx, gameState):
             elif occupierColor == Occupier.WHITE:
                 if color == Occupier.BLACK:
                     retval[tuple(idxTemp)] = True
-                break
             elif occupierColor == Occupier.BLACK:
                 if color == Occupier.WHITE:
                     retval[tuple(idxTemp)] = True
-                break
             else:
                 raise ValueError
     return retval
@@ -134,12 +130,10 @@ def _makeMoveMaskRook(color, idx, gameState):
             elif occupierColor == Occupier.WHITE:
                 if color == Occupier.BLACK:
                     retval[tuple(idxTemp)] = True
-                logging.info("Rook color %s, stopped going from %s to %s by %s piece" % (color, idx, idxTemp, occupierColor))
                 break
             elif occupierColor == Occupier.BLACK:
                 if color == Occupier.WHITE:
                     retval[tuple(idxTemp)] = True
-                logging.info("Rook color %s, stopped going from %s to %s by %s piece" % (color, idx, idxTemp, occupierColor))
                 break
             else:
                 raise ValueError

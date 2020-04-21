@@ -4,15 +4,16 @@ import re
 import numpy as np
 
 from log import setupLogging
-from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString, S2I, Occupier
+from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString, S2I, I2S, Occupier, PIECELABELS
+import MoveSquares
 
 import pdb
 
 
 
 class Turn(enum.IntEnum):
-    WHITE = 0
-    BLACK = 1
+    WHITE = 1
+    BLACK = -1
    
 class Castle(enum.IntEnum):
     """ 
@@ -44,7 +45,7 @@ class GameState(object):
         elif fenString:#If starting from a fenstring representation of a game state
             self.constructFromFenString(fenString)
         else:
-            self.bitboards = [] #bitfields representing piece positions
+            self.bitboards = [BitBoard() for x in PieceType] #bitfields representing piece positions
             self.turn = Turn.WHITE #whose turn it is
             self.possibleCastles = [True, True, True, True]#whether any of the four castle types can be done (only cares about whether the relevant pieces have moved previously, not the other castling rules)
             self.halfmoveClock = 0#number of half-moves (turns) since last pawn move or piece caputre, for determining draw (50-turn rule)
@@ -62,6 +63,7 @@ class GameState(object):
         else:
             self.turn = Turn.WHITE
         self.possibleCastles = self.possCastlesFromCastleFen(castleString)
+        self.halfmoveClock = 0#TODO: actually read this
 
     def possCastlesFromCastleFen(self, castleString):
         retval = [False, False, False, False]
@@ -99,6 +101,23 @@ class GameState(object):
             return self._key() == other._key()
         return NotImplemented
 
+    # Some handy representational tools
+    def prettyDebug(self):
+        for i in range(7, -1, -1):
+            line = str(i + 1) + "| "
+            for j in range(0, 8):
+                color, pieceType = self.getPieceAtPosition((i, j)) 
+                if color == Occupier.CLEAR:
+                    token = "-"
+                else:
+                    token = PIECELABELS[pieceType][0 if color == Occupier.WHITE else 1]
+                line += token
+                line += " "
+            print(line)
+        print("   a b c d e f g h")
+                
+                
+
     # Accessors
 
     def getBitboards(self):
@@ -123,30 +142,41 @@ class GameState(object):
             pos = tuple(pos) 
 
         for i, board in enumerate(self.getBitboards()):
+            if isinstance(board, np.ndarray):
+                board = board[()]
             val = board[pos]
             if val != Occupier.CLEAR:
                 return board[pos], PieceType(i)
         return Occupier.CLEAR, None
 
     def getPawns(self, color = Occupier.CLEAR):
-        return self.bitboards[PieceType.PAWN].getPositionsOf(color)
+        return self.getPiecesOfColor(self, PieceType.PAWN, color)
     def getRooks(self, color = Occupier.CLEAR):
-        return self.bitboards[PieceType.ROOK].getPositionsOf(color)
+        return self.getPiecesOfColor(self, PieceType.ROOK, color)
     def getKnights(self, color = Occupier.CLEAR):
-        return self.bitboards[PieceType.KNIGHT].getPositionsOf(color)
+        return self.getPiecesOfColor(self, PieceType.KNIGHT, color)
     def getBishops(self, color = Occupier.CLEAR):
-        return self.bitboards[PieceType.BISHOP].getPositionsOf(color)
+        return self.getPiecesOfColor(self, PieceType.BISHOP, color)
     def getQueens(self, color = Occupier.CLEAR):
-        return self.bitboards[PieceType.QUEEN].getPositionsOf(color)
+        return self.getPiecesOfColor(self, PieceType.QUEEN, color)
     def getKings(self, color = Occupier.CLEAR):
-        return self.bitboards[PieceType.KING].getPositionsOf(color)
+        return self.getPiecesOfColor(self, PieceType.KING, color)
     def getPiecesOfColor(self, pieceType, color = Occupier.CLEAR):
-        return self.bitboards[pieceType].getPositionsOf(color)
+        board = self.bitboards[pieceType]
+        if isinstance(board, np.ndarray):
+            board = board[()]
+        return board.getPositionsOf(color)
 
     # Mutators
 
     def incHalfmoveClock(self):
         self.halfmoveClock += 1
+
+    def toggleTurn(self):
+        if self.turn == Turn.WHITE:
+            self.turn = Turn.BLACK
+        else:
+            self.turn = Turn.WHITE
 
     def modCastleBecauseMove(self, pos):
         """
@@ -154,20 +184,20 @@ class GameState(object):
         """
         if isinstance(pos, str):
             pos = S2I(pos)
-        if posStr == S2I("a1"):
-            self.possibleCastles[Castles.WQUEEN] = False
-        elif posStr == S2I("e1"):
-            self.possibleCastles[Castles.WKING] = False
-            self.possibleCastles[Castles.WQUEEN] = False
-        elif posStr == S2I("h1"):
-            self.possibleCastles[Castles.WKING] = False
-        elif posStr == S2I("a8"):
-            self.possibleCastles[Castles.BQUEEN] = False
-        elif posStr == S2I("e8"):
-            self.possibleCastles[Castles.BKING] = False
-            self.possibleCastles[Castles.BQUEEN] = False
-        elif posStr == S2I("h8"):
-            self.possibleCastles[Castles.BKING] = False
+        if pos == S2I("a1"):
+            self.possibleCastles[Castle.WQUEEN] = False
+        elif pos == S2I("e1"):
+            self.possibleCastles[Castle.WKING] = False
+            self.possibleCastles[Castle.WQUEEN] = False
+        elif pos == S2I("h1"):
+            self.possibleCastles[Castle.WKING] = False
+        elif pos == S2I("a8"):
+            self.possibleCastles[Castle.BQUEEN] = False
+        elif pos == S2I("e8"):
+            self.possibleCastles[Castle.BKING] = False
+            self.possibleCastles[Castle.BQUEEN] = False
+        elif pos == S2I("h8"):
+            self.possibleCastles[Castle.BKING] = False
 
     def clearPieceInSpace(self, pos):
         if isinstance(pos, str):
@@ -175,7 +205,19 @@ class GameState(object):
 
         boards = self.getBitboards()
         for board in boards:
+            if isinstance(board, np.ndarray):
+                board = board[()]
             board[pos] = Occupier.CLEAR
+
+    def putPieceInSpace(self, piece, color, pos):
+        if isinstance(pos, str):
+            pos = S2I(pos)
+        if isinstance(piece, str):
+            logging.error(piece) 
+        board = self.getBitboards()[piece]
+        if isinstance(board, np.ndarray):
+            board = board[()]
+        board[pos] = color
 
     # Chess-specific functions
 
@@ -183,6 +225,7 @@ class GameState(object):
         """
         Given the current game state, returns a list of all possible moves that could be performed
         """
+        #NOTE: can use the MoveSquares functions to help with this
         raise NotImplementedError
 
     def isCheckmate(self):
@@ -218,58 +261,76 @@ class Move(object):
 
     @classmethod
     def constructFromPgnHalfmove(cls, gameState, Piece, Rank, File, Endloc, Promotion):
-
+        #remember: order is (file)(rank) (files are letters, ranks are numbers)
+        endLoc = S2I(Endloc)
         if Piece == '':
             Piece = PieceType.PAWN
         else:
             matchingTypes = [x for x in PIECELABELS.keys() if PIECELABELS[x][0] == Piece]
             Piece = matchingTypes[0]
         if Promotion != '':
-            matchingTypes = [x for x in PIECELABELS.keys() if PIECELABELS[x][0] == Piece]
+            matchingTypes = [x for x in PIECELABELS.keys() if PIECELABELS[x][0] == Promotion]
             Promotion = matchingTypes[0]
 
 
-        pdb.set_trace()
+        #figure out what fucking piece is moving
+        possibleMovers = gameState.getPiecesOfColor(Piece, gameState.turn)
+        candidates = []
+        for candidate in possibleMovers:
+            mask = MoveSquares.makeMoveMask(Piece, gameState.turn, candidate, gameState)
+            if mask[endLoc]:
+                candidates.append(candidate)
+
+        if len(candidates) > 1:#if piece ambiguity
+            if File != '':
+                candidates = [x for x in candidates if I2S(x)[0] == File]
+            if Rank != '':
+                candidates = [x for x in candidates if I2S(x)[1] == Rank]
+        
+        if len(candidates) != 1:
+            pdb.set_trace()
+            raise ValueError("Still have piece ambiguity")
+            
+        startLoc = candidates[0]
 
 
-        retval = Move(startLoc, S2I(EndLoc), None, Promotion)
-        raise NotImplementedError
+        retval = Move(startLoc, endLoc, None, Promotion)
+        return retval
 
     # APPLYING GAME STATE TRANSFORMATIONS
 
     def _applyCastle(self, gameState):
         retval = GameState(startingFrom = gameState)
         retval.incHalfmoveClock()
-        boards = retval.getBitboards()
         if self.castle == Castle.WKING:
-            boards[PieceType.KING][S2I('e1')] = Occupier.CLEAR
-            boards[PieceType.ROOK][S2I('h1')] = Occupier.CLEAR
-            boards[PieceType.KING][S2I('g1')] = Occupier.WHITE
-            boards[PieceType.ROOK][S2I('f1')] = Occupier.WHITE
+            retval.clearPieceInSpace("e1")
+            retval.clearPieceInSpace("h1")
+            retval.putPieceInSpace(PieceType.KING, Occupier.WHITE, "g1")
+            retval.putPieceInSpace(PieceType.ROOK, Occupier.WHITE, "f1")
             retval.modCastleBecauseMove("e1")
             retval.modCastleBecauseMove("h1")
             return retval
         elif self.castle == Castle.WQUEEN:
-            boards[PieceType.KING][S2I('e1')] = Occupier.CLEAR
-            boards[PieceType.ROOK][S2I('a1')] = Occupier.CLEAR
-            boards[PieceType.KING][S2I('c1')] = Occupier.WHITE
-            boards[PieceType.ROOK][S2I('d1')] = Occupier.WHITE
+            retval.clearPieceInSpace("e1")
+            retval.clearPieceInSpace("a1")
+            retval.putPieceInSpace(PieceType.KING, Occupier.WHITE, "c1")
+            retval.putPieceInSpace(PieceType.ROOK, Occupier.WHITE, "d1")
             retval.modCastleBecauseMove("e1")
             retval.modCastleBecauseMove("a1")
             return retval
         elif self.castle == Castle.BKING:
-            boards[PieceType.KING][S2I('e8')] = Occupier.CLEAR
-            boards[PieceType.ROOK][S2I('h8')] = Occupier.CLEAR
-            boards[PieceType.KING][S2I('g8')] = Occupier.BLACK
-            boards[PieceType.ROOK][S2I('f8')] = Occupier.BLACK
+            retval.clearPieceInSpace("e8")
+            retval.clearPieceInSpace("h8")
+            retval.putPieceInSpace(PieceType.KING, Occupier.BLACK, "g8")
+            retval.putPieceInSpace(PieceType.ROOK, Occupier.BLACK, "f8")
             retval.modCastleBecauseMove("e8")
             retval.modCastleBecauseMove("h8")
             return retval
         elif self.castle == Castle.BQUEEN:
-            boards[PieceType.KING][S2I('e8')] = Occupier.CLEAR
-            boards[PieceType.ROOK][S2I('a8')] = Occupier.CLEAR
-            boards[PieceType.KING][S2I('c8')] = Occupier.BLACK
-            boards[PieceType.ROOK][S2I('d8')] = Occupier.BLACK
+            retval.clearPieceInSpace("e8")
+            retval.clearPieceInSpace("a8")
+            retval.putPieceInSpace(PieceType.KING, Occupier.BLACK, "c8")
+            retval.putPieceInSpace(PieceType.ROOK, Occupier.BLACK, "d8")
             retval.modCastleBecauseMove("e8")
             retval.modCastleBecauseMove("a8")
             return retval
@@ -296,10 +357,13 @@ class Move(object):
 
         #Clear spots for src and dest
         retval.clearPieceInSpace(self.startLoc)
+        retval.modCastleBecauseMove(self.startLoc)
         retval.clearPieceInSpace(self.endLoc)
 
         #Put piece in correct spot
-        retval.getBitBoards()[pieceType] = color
+        if self.promotion != None and self.promotion != '':
+            pieceType = self.promotion
+        retval.putPieceInSpace(pieceType, color, self.endLoc)
 
         return retval
 

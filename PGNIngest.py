@@ -14,7 +14,7 @@ import torch
 import argparse
 
 from log import setupLogging
-from GameState import GameState, Move, Castle
+from GameState import GameState, Move, Castle, Turn
 from BitBoard import PieceType
 
 import pdb
@@ -36,19 +36,22 @@ def processPgnHalfmove(move, state):
     (Piece)(rank)(file)(x)[endloc](promotion)(check(m))
     """
     if move == "O-O":
-        if state.getTurn == Turn.WHITE:
+        if state.getTurn() == Turn.WHITE:
             return Move.constructCastle(Castle.WKING)
         else:
             return Move.constructCastle(Castle.BKING)
     elif move == "O-O-O":
-        if state.getTurn == Turn.WHITE:
+        if state.getTurn() == Turn.WHITE:
             return Move.constructCastle(Castle.WQUEEN)
         else:
             return Move.constructCastle(Castle.BQUEEN)
 
-    regstr = "([QKNRB]?)([a-h]?)([1-8]?)x?([a-h][1-8])((?=QNRB)?)[+#]?"
+    #regstr = "([QKNRB]?)([a-h]?)([1-8]?)x?([a-h][1-8])((?=QNRB)?)[+#]?"
+    regstr = "([QKNRB]?)([a-h]?)([1-8]?)x?([a-h][1-8])=?([QNRB]?)[+#]?"
     match = re.match(regstr, move)
-    Piece, Rank, File, Endloc, Promotion = match.groups()
+    Piece, File, Rank, Endloc, Promotion = match.groups()
+    if Promotion != '':
+        print("*" * 20 + str(Promotion))
 
     return Move.constructFromPgnHalfmove(state, Piece, Rank, File, Endloc, Promotion)
 
@@ -81,6 +84,7 @@ def moveListFromGameLine(gLine):
             movePairs.append( (gameState, moveB) )     
             gameState = moveB.apply(gameState)
             
+    logging.info("PARSED A GAME" + "=" * 50)
 
 
     return None
