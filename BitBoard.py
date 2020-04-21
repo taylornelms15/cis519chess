@@ -40,7 +40,7 @@ PIECELABELS = {PieceType.PAWN:      ["P", "p"],
                PieceType.QUEEN:     ['Q', 'q'],
                PieceType.KING:      ['K', 'k']}
 
-FENParseString = "(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)\s*([w|b]*)\s*([KQkq-]*)"  
+FENParseString = "(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)\s*([w|b]*)\s*([KQkq-]*)\s*([-\w]+)\s*"  
 
 def BitBoardsFromFenString(fenString):
     """
@@ -84,6 +84,12 @@ class BitBoard(object):
 
         if fenString:
             self.constructFromFen(fenString)
+
+    @classmethod
+    def copy(cls, other):
+        retval = BitBoard(other.pieceType)
+        retval.board = np.copy(other.board)
+        return retval
         
     ################################
     # QUICK ACCESSORS

@@ -14,7 +14,7 @@ import torch
 import argparse
 
 from log import setupLogging
-from GameState import GameState, Move, Castle, Turn
+from GameState import GameState, Move, Castle, Turn, BadGameParseException
 from BitBoard import PieceType
 
 import pdb
@@ -35,12 +35,12 @@ def processPgnHalfmove(move, state):
     Halfmove format:
     (Piece)(rank)(file)(x)[endloc](promotion)(check(m))
     """
-    if move == "O-O":
+    if re.match("O-O[^-]*", move):
         if state.getTurn() == Turn.WHITE:
             return Move.constructCastle(Castle.WKING)
         else:
             return Move.constructCastle(Castle.BKING)
-    elif move == "O-O-O":
+    elif re.match("O-O-O[^-]*", move):
         if state.getTurn() == Turn.WHITE:
             return Move.constructCastle(Castle.WQUEEN)
         else:
@@ -49,9 +49,9 @@ def processPgnHalfmove(move, state):
     #regstr = "([QKNRB]?)([a-h]?)([1-8]?)x?([a-h][1-8])((?=QNRB)?)[+#]?"
     regstr = "([QKNRB]?)([a-h]?)([1-8]?)x?([a-h][1-8])=?([QNRB]?)[+#]?"
     match = re.match(regstr, move)
+    if match == None:
+        logging.error(move)
     Piece, File, Rank, Endloc, Promotion = match.groups()
-    if Promotion != '':
-        print("*" * 20 + str(Promotion))
 
     return Move.constructFromPgnHalfmove(state, Piece, Rank, File, Endloc, Promotion)
 
@@ -63,8 +63,7 @@ def moveListFromGameLine(gLine):
     turnRegex = "\s*\d+\.\s"
     wholeTurns = re.split(turnRegex, gLine)[1:]#get rid of leading ''
 
-    logging.info(gLine)
-    logging.info(wholeTurns)
+    #logging.info(gLine)
 
     movePairs = []
 
@@ -86,8 +85,7 @@ def moveListFromGameLine(gLine):
             
     logging.info("PARSED A GAME" + "=" * 50)
 
-
-    return None
+    return movePairs
 
 def processGameLine(line):
     regstr = "(.*?)\s+{(.*?)}\s+(.*)"
@@ -97,7 +95,10 @@ def processGameLine(line):
         #for simplicity, ignoring games that did not end in a forced draw or a checkmate
         return None
 
-    moveList = moveListFromGameLine(game)
+    try:
+        moveList = moveListFromGameLine(game)
+    except BadGameParseException as e:
+        return None
 
     return ENDING_TYPES[reason]
 

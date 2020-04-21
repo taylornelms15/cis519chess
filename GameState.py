@@ -9,7 +9,8 @@ import MoveSquares
 
 import pdb
 
-
+class BadGameParseException(Exception):
+    pass
 
 class Turn(enum.IntEnum):
     WHITE = 1
@@ -30,18 +31,19 @@ class Castle(enum.IntEnum):
     BQUEEN  = 3
 
 class GameState(object):
-    __slots__ = ['bitboards', 'turn', 'possibleCastles', 'halfmoveClock']
+    __slots__ = ['bitboards', 'turn', 'possibleCastles', 'halfmoveClock', 'enpassant']
     initialBoardFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
     def __init__(self, startingFrom = None, fenString = None):
         if startingFrom:
-            self.bitboards = [np.copy(x) for x in startingFrom.bitboards]#should do a copy of these, rather than by-reference
+            self.bitboards = [BitBoard.copy(x) for x in startingFrom.bitboards]#should do a copy of these, rather than by-reference
             if startingFrom.turn == Turn.WHITE:
                 self.turn = Turn.BLACK
             else:
                 self.turn = Turn.WHITE
             self.possibleCastles = [x for x in startingFrom.possibleCastles]
             self.halfmoveClock = startingFrom.halfmoveClock
+            self.enpassant = None
         elif fenString:#If starting from a fenstring representation of a game state
             self.constructFromFenString(fenString)
         else:
@@ -49,6 +51,7 @@ class GameState(object):
             self.turn = Turn.WHITE #whose turn it is
             self.possibleCastles = [True, True, True, True]#whether any of the four castle types can be done (only cares about whether the relevant pieces have moved previously, not the other castling rules)
             self.halfmoveClock = 0#number of half-moves (turns) since last pawn move or piece caputre, for determining draw (50-turn rule)
+            self.enpassant = None
 
     def constructFromFenString(self, fenString):
         """
@@ -62,6 +65,11 @@ class GameState(object):
             self.turn = Turn.BLACK
         else:
             self.turn = Turn.WHITE
+        enpassantString = fenPieces[10]
+        if (enpassantString != '-'):
+            self.enpassant = S2I(enpassantString)
+        else:
+            self.enpassant = None
         self.possibleCastles = self.possCastlesFromCastleFen(castleString)
         self.halfmoveClock = 0#TODO: actually read this
 
@@ -253,6 +261,14 @@ class Move(object):
         self.castle     = castle
         self.promotion  = promotion
 
+    # STRING REPRESENTATIONS
+    def __repr__(self):
+        if self.castle != None:
+            retval = "<Move C:%s>" % self.castle.name
+        else:
+            retval = "<Move %s->%s" % (I2S(self.startLoc), I2S(self.endLoc))
+        return retval
+
     # SPECIAL CONSTRUCTORS
      
     @classmethod
@@ -288,8 +304,9 @@ class Move(object):
                 candidates = [x for x in candidates if I2S(x)[1] == Rank]
         
         if len(candidates) != 1:
-            pdb.set_trace()
-            raise ValueError("Still have piece ambiguity")
+            #pdb.set_trace()
+            #raise ValueError("Still have piece ambiguity")
+            raise BadGameParseException("Some sort of piece ambiguity or emptiness")
             
         startLoc = candidates[0]
 
