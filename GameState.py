@@ -1,6 +1,7 @@
 import logging
 import enum
 import re
+import numpy as np
 
 from log import setupLogging
 from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString, S2I, Occupier
@@ -118,9 +119,12 @@ class GameState(object):
         """
         if isinstance(pos, str):
             pos = S2I(pos)
+        elif isinstance(pos, np.ndarray):
+            pos = tuple(pos) 
 
         for i, board in enumerate(self.getBitboards()):
-            if board[pos] != Occupier.CLEAR:
+            val = board[pos]
+            if val != Occupier.CLEAR:
                 return board[pos], PieceType(i)
         return Occupier.CLEAR, None
 

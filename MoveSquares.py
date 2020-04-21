@@ -9,6 +9,7 @@ import logging
 import sys
 import numpy as np
 
+from log import setupLogging
 from BitBoard import Occupier, PieceType
 
 import pdb
@@ -16,14 +17,14 @@ import pdb
 ROOK_DIRS = np.array([ [0, 1], [1, 0], [0, -1], [-1, 0] ], dtype=np.int8)
 BISHOP_DIRS = np.array([ [1, 1], [1, -1], [-1, 1], [-1, -1] ], dtype=np.int8)
 QUEEN_DIRS = np.concatenate((ROOK_DIRS, BISHOP_DIRS), axis=0)
-KNIGHT_DIRS = np.array([ [1, 2], [2, 1], [1, -2], [2, -1], [-1, 2], [-2, 1], [-1, -2], [-2, -1], dtype = np.int8)
-PAWN_WM_DIRS = np.array([ [0, 1] ], dtype=np.int8)
-PAWN_BM_DIRS = np.array([ [0, -1] ], dtype=np.int8)
-PAWN_WC_DIRS = np.array([ [-1, 1], [1, 1] ], dtype=np.int8)
-PAWN_BC_DIRS = np.array([ [-1, -1], [1, -1] ], dtype=np.int8)
+KNIGHT_DIRS = np.array([ [1, 2], [2, 1], [1, -2], [2, -1], [-1, 2], [-2, 1], [-1, -2], [-2, -1] ], dtype = np.int8)
+PAWN_WM_DIRS = np.array([ [1, 0] ], dtype=np.int8)
+PAWN_BM_DIRS = np.array([ [-1, 0] ], dtype=np.int8)
+PAWN_WC_DIRS = np.array([ [1, 1], [1, -1] ], dtype=np.int8)
+PAWN_BC_DIRS = np.array([ [-1, -1], [-1, 1] ], dtype=np.int8)
 
 def indexInBounds(idx, direction = np.array([0, 0])):
-    return np.all(np.logical_and(np.greater_equal(0, idx + direction), np.less(8, idx + direction))):
+    return np.all(np.logical_and(np.greater_equal(idx + direction, 0), np.less(idx + direction, 8)))
 
 def _makeMoveMaskPawnB(idx, gameState):
     retval = np.zeros((8, 8), dtype=np.bool)
@@ -33,19 +34,19 @@ def _makeMoveMaskPawnB(idx, gameState):
         idxTemp = idx + PAWN_BM_DIRS[0]
         occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
         if occupierColor == Occupier.CLEAR:
-            retval[idxTemp] = True
+            retval[tuple(idxTemp)] = True
             if idx[1] == 6:
                 idxTemp = idxTemp + PAWN_BM_DIRS[0]
                 occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
                 if occupierColor == Occupier.CLEAR:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
     #capture directions
     for direction in PAWN_BC_DIRS:
         if indexInBounds(idx, direction):
             idxTemp = idx + direction
             occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
             if occupierColor == Occupier.WHITE:
-                retval[idxTemp] = True
+                retval[tuple(idxTemp)] = True
     return retval
 
 def _makeMoveMaskPawnW(idx, gameState):
@@ -56,19 +57,19 @@ def _makeMoveMaskPawnW(idx, gameState):
         idxTemp = idx + PAWN_WM_DIRS[0]
         occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
         if occupierColor == Occupier.CLEAR:
-            retval[idxTemp] = True
+            retval[tuple(idxTemp)] = True
             if idx[1] == 1:
                 idxTemp = idxTemp + PAWN_WM_DIRS[0]
                 occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
                 if occupierColor == Occupier.CLEAR:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
     #capture directions
     for direction in PAWN_WC_DIRS:
         if indexInBounds(idx, direction):
             idxTemp = idx + direction
             occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
             if occupierColor == Occupier.BLACK:
-                retval[idxTemp] = True
+                retval[tuple(idxTemp)] = True
     return retval
 
 def _makeMoveMaskPawn(color, idx, gameState):
@@ -87,14 +88,14 @@ def _makeMoveMaskKing(color, idx, gameState):
             idxTemp += direction
             occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
             if occupierColor == Occupier.CLEAR:
-                retval[idxTemp] = True
+                retval[tuple(idxTemp)] = True
             elif occupierColor == Occupier.WHITE:
                 if color == Occupier.BLACK:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
                 break
             elif occupierColor == Occupier.BLACK:
                 if color == Occupier.WHITE:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
                 break
             else:
                 raise ValueError
@@ -108,14 +109,14 @@ def _makeMoveMaskKnight(color, idx, gameState):
             idxTemp += direction
             occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
             if occupierColor == Occupier.CLEAR:
-                retval[idxTemp] = True
+                retval[tuple(idxTemp)] = True
             elif occupierColor == Occupier.WHITE:
                 if color == Occupier.BLACK:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
                 break
             elif occupierColor == Occupier.BLACK:
                 if color == Occupier.WHITE:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
                 break
             else:
                 raise ValueError
@@ -129,14 +130,16 @@ def _makeMoveMaskRook(color, idx, gameState):
             idxTemp += direction
             occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
             if occupierColor == Occupier.CLEAR:
-                retval[idxTemp] = True
+                retval[tuple(idxTemp)] = True
             elif occupierColor == Occupier.WHITE:
                 if color == Occupier.BLACK:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
+                logging.info("Rook color %s, stopped going from %s to %s by %s piece" % (color, idx, idxTemp, occupierColor))
                 break
             elif occupierColor == Occupier.BLACK:
                 if color == Occupier.WHITE:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
+                logging.info("Rook color %s, stopped going from %s to %s by %s piece" % (color, idx, idxTemp, occupierColor))
                 break
             else:
                 raise ValueError
@@ -146,18 +149,18 @@ def _makeMoveMaskBishop(color, idx, gameState):
     retval = np.zeros((8, 8), dtype=np.bool)
     for direction in BISHOP_DIRS:
         idxTemp = np.copy(idx)
-        while np.all(np.logical_and(np.greater_equal(0, idxTemp + direction), np.less(8, idxTemp + direction))):
+        while indexInBounds(idxTemp, direction):
             idxTemp += direction
             occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
             if occupierColor == Occupier.CLEAR:
-                retval[idxTemp] = True
+                retval[tuple(idxTemp)] = True
             elif occupierColor == Occupier.WHITE:
                 if color == Occupier.BLACK:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
                 break
             elif occupierColor == Occupier.BLACK:
                 if color == Occupier.WHITE:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
                 break
             else:
                 raise ValueError
@@ -167,18 +170,18 @@ def _makeMoveMaskQueen(color, idx, gameState):
     retval = np.zeros((8, 8), dtype=np.bool)
     for direction in QUEEN_DIRS:
         idxTemp = np.copy(idx)
-        while np.all(np.logical_and(np.greater_equal(0, idxTemp + direction), np.less(8, idxTemp + direction))):
+        while indexInBounds(idxTemp, direction):
             idxTemp += direction
             occupierColor, _ = gameState.getPieceAtPosition(idxTemp)
             if occupierColor == Occupier.CLEAR:
-                retval[idxTemp] = True
+                retval[tuple(idxTemp)] = True
             elif occupierColor == Occupier.WHITE:
                 if color == Occupier.BLACK:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
                 break
             elif occupierColor == Occupier.BLACK:
                 if color == Occupier.WHITE:
-                    retval[idxTemp] = True
+                    retval[tuple(idxTemp)] = True
                 break
             else:
                 raise ValueError
@@ -202,6 +205,22 @@ def makeMoveMask(pieceType, color, idx, gameState):
         return _makeMoveMaskKing(color, idx, gameState)
 
 
+def main():
+    #state = GameState.GameState(fenString = exampleWhiteCheckmate)
+    state = GameState.GameState(fenString = GameState.GameState.initialBoardFen)
+    logging.info(state)
+    print("Pawn mask: %s" % makeMoveMask(PieceType.PAWN, Occupier.WHITE, (3, 4), state))
+    print("Rook mask: %s" % makeMoveMask(PieceType.ROOK, Occupier.WHITE, (3, 4), state))
+    print("Knight mask: %s" % makeMoveMask(PieceType.KNIGHT, Occupier.WHITE, (3, 4), state))
+    print("Bishop mask: %s" % makeMoveMask(PieceType.BISHOP, Occupier.WHITE, (3, 4), state))
+    print("Queen mask: %s" % makeMoveMask(PieceType.QUEEN, Occupier.WHITE, (3, 4), state))
+    print("King mask: %s" % makeMoveMask(PieceType.KING, Occupier.WHITE, (3, 4), state))
+     
 
+if __name__ == "__main__":
+    setupLogging()
+    import GameState
+    from mcts import exampleWhiteCheckmate
+    main()
 
 

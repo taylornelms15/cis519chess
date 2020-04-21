@@ -23,7 +23,7 @@ def S2I(posString):
     Turns a string representing a position to an index that
     can be used to index into a bitboard
     """
-    return ((ord(posString[0]) - ord('a')), (ord(posString[1]) - ord('1')))
+    return ((ord(posString[0]) - ord('1')), (ord(posString[1]) - ord('a')))
 
 #First letter is "white" label in FEN, second is "black"
 PIECELABELS = {PieceType.PAWN:      ["P", "p"],
@@ -60,6 +60,9 @@ class BitBoard():
     """
     Class representing bitmap for a single piece type
     Filled with WHITE, CLEAR, or BLACK values
+
+    IMPORTANT:
+    indexing into, say, "b1" is done by using index (0,1), for the 0th row, and the "1st" (b) column
     """
     __slots__ = ["board", "pieceType"]
 
@@ -103,7 +106,7 @@ class BitBoard():
         elif color == Occupier.BLACK:
             return self.getBlackPositions()
         elif color == Occupier.CLEAR:
-            returl self.getAllPositions()
+            return self.getAllPositions()
         else:
             raise ValueError
  
@@ -121,7 +124,7 @@ class BitBoard():
         fenMatches = re.match(regstr, fenString).groups()
 
         for i in range(8):
-            thisRowFen = fenMatches[i]
+            thisRowFen = fenMatches[7 - i]
             pos = 0
             for char in thisRowFen:
                 if re.match("\d", char):#if numeric
@@ -145,7 +148,7 @@ class BitBoard():
         we should be wary of the computational complexity, probably
         """
         retval = ""
-        for i in range(self.board.shape[0]):
+        for i in range(self.board.shape[0] - 1, 0, -1):
             runningTotal = 0
             for j in range(self.board.shape[1]):
                 val = self.board[i][j]
