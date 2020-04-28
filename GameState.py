@@ -75,13 +75,13 @@ class GameState(object):
 
     def possCastlesFromCastleFen(self, castleString):
         retval = [False, False, False, False]
-        if re.match("K", castleString) != None:
+        if "K" in castleString:
             retval[Castle.WKING] = True
-        if re.match("Q", castleString) != None:
+        if "Q" in castleString:
             retval[Castle.WQUEEN] = True
-        if re.match("k", castleString) != None:
+        if "k" in castleString:
             retval[Castle.BKING] = True
-        if re.match("q", castleString) != None:
+        if "q" in castleString:
             retval[Castle.BQUEEN] = True
         return retval
 

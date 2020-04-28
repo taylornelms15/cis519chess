@@ -97,6 +97,7 @@ def processGameLine(line):
 
     try:
         moveList = moveListFromGameLine(game)
+        pdb.set_trace()
     except BadGameParseException as e:
         return None
 

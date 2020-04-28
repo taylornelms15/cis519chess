@@ -40,7 +40,7 @@ PIECELABELS = {PieceType.PAWN:      ["P", "p"],
                PieceType.QUEEN:     ['Q', 'q'],
                PieceType.KING:      ['K', 'k']}
 
-FENParseString = "(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)\s*([w|b]*)\s*([KQkq-]*)\s*([-\w]+)\s*"  
+FENParseString = "(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)/(\w+)\s*([w|b]*)\s*([KQkq-]*)\s*([-\w]*)\s*"  
 
 def BitBoardsFromFenString(fenString):
     """
@@ -127,6 +127,9 @@ class BitBoard(object):
             return self.getAllPositions()
         else:
             raise ValueError
+
+    def getRawBoard(self):
+        return self.board
  
     ################################
     # STRING REPRESENTATIONS
@@ -166,7 +169,7 @@ class BitBoard(object):
         we should be wary of the computational complexity, probably
         """
         retval = ""
-        for i in range(self.board.shape[0] - 1, 0, -1):
+        for i in range(7, -1, -1):
             runningTotal = 0
             for j in range(self.board.shape[1]):
                 val = self.board[i][j]
