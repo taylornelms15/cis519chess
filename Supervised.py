@@ -87,34 +87,90 @@ def gameStateToTensor(gameState):
 
 
 
+def getTensorData(args):
+    """
+    Takes in parsed command line args, creates a set of tensor data for the (GameState, Move) pairs
+    Returns a TensorDataset
+    """
+    if args.tensorData == None:
+
+        rawData = []
+
+        if (args.pgnFiles):
+            for pgnFile in args.pgnFiles:
+                rawData += PGNIngest.parseAllLinesInFile(pgnFile)
+        elif (args.pickedFile):
+            pass
+            #this is where we would unpickle things into rawData
+
+        """
+        Currently, `rawData` is a 2d list
+        Each entry is a list representing a single chess game that ended in a checkmate
+        Each such game is a list of (GameState, move) pairs
+        At some point, we may re-evaluate how we represent that set of raw data
+        """
+        states = []
+        moves  = []
+
+        for gameListing in rawData:
+            otherWay = list(zip(*gameListing))
+            states += list(otherWay[0])
+            moves  += list(otherWay[1])
+
+        states = torch.stack([gameStateToTensor(x) for x in states])
+        moves  = torch.stack([moveToTensor(x)      for x in moves])
+
+        fullDataset = torch.utils.data.TensorDataset(states, moves)            
+
+        return fullDataset
+
+    else:
+        return torch.load(args.tensorData)
+        #TODO: do something to load the dataset from file here
+
+def trainNetworkOnData(dataset):
+    """
+    Takes in our TensorDataset, trains a ChessNet on it
+    """
+    numItems = len(dataset)
+    train, valid = torch.utils.data.random_split(dataset, (int(numItems * 0.8), numItems - int((numItems * 0.8))))
+
+
+    trainloader = torch.utils.data.DataLoader(train, batch_size=256)
+    validloader = torch.utils.data.DataLoader(valid, batch_size=256)
+
+    pdb.set_trace()
+    model = ChessNet()
+
+    #TODO: actually train
+
+
+    return model
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("-o", "--outData", help="File to which to write out loaded and parsed data",
+                        type=argparse.FileType("wb"), nargs="?")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-p", "--pgnFiles", help="Filename(s) of pgn games to load",
                         type=argparse.FileType("r"), nargs="+")
     group.add_argument("pickledFile", help="Filename of picked alread-parsed pgn file to load",
                         type = argparse.FileType("r"), nargs="?")
+    group.add_argument("-t", "--tensorData", help="Filename of file containing saved tensor data of a dataset",
+                        type = argparse.FileType("rb"), nargs="?")
+
+                        
 
     args = parser.parse_args()
-    
-    rawData = []
 
-    if (args.pgnFiles):
-        for pgnFile in args.pgnFiles:
-            rawData.append(PGNIngest.parseAllLinesInFile(pgnFile))
-    elif (args.pickedFile):
-        pass
-        #this is where we would unpickle things into rawData
-    pdb.set_trace()
+    data = getTensorData(args)
 
-    #logging.info(args.pgnFiles)
-    #logging.info(args.pickled)
+    if args.outData != None:
+        torch.save(data, args.outData)
 
+    trainedModel = trainNetworkOnData(data)
 
-
-
-
+    """
     myState = GameState.getInitialState()
     myMove  = Move("b2", "b4")
 
@@ -124,6 +180,7 @@ def main():
     logging.info("stateTensor shape: (%s, %s, %s)" % (stateTensor.shape))
     logging.info(moveTensor)
     logging.info("moveTensor shape: (%s)" % (moveTensor.shape))
+    """
 
 
 
