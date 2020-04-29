@@ -83,8 +83,6 @@ def moveListFromGameLine(gLine):
             movePairs.append( (gameState, moveB) )     
             gameState = moveB.apply(gameState)
             
-    logging.info("PARSED A GAME" + "=" * 50)
-
     return movePairs
 
 def processGameLine(line):
@@ -97,11 +95,11 @@ def processGameLine(line):
 
     try:
         moveList = moveListFromGameLine(game)
-        pdb.set_trace()
     except BadGameParseException as e:
         return None
 
-    return ENDING_TYPES[reason]
+    return moveList
+    #return ENDING_TYPES[reason]
 
 
 
@@ -115,6 +113,17 @@ def getNextGameLine(pgnFile):
 
         if nextLine.startswith("1."):
             return nextLine.strip()
+
+def parseAllLinesInFile(pgnFile):
+    retval = []
+    while True:
+        nextGameLine = getNextGameLine(pgnFile)
+        if nextGameLine == None:
+            break
+        result = processGameLine(nextGameLine)
+        if result is not None:
+            retval.append(result)
+    return retval
 
 def main():
     parser = argparse.ArgumentParser()

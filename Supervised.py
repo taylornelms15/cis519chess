@@ -10,9 +10,12 @@ import enum
 import re
 import numpy as np
 import torch
+import argparse
 
+import PGNIngest
 from BitBoard import BitBoard, PieceType, S2I, I2S, PIECELABELS
 from GameState import Turn, Castle, GameState, Move
+from ChessNet import ChessNet, trainModel
 
 import pdb
 
@@ -26,6 +29,7 @@ def moveToTensor(move):
     first 64 elements are just the regular indexes
     Next two are castles (kingside, queenside)
     Not supporting distinguishing promotions (yet?)
+    Update: will just make one tensor for output
     """
     if move.castle != None:
         if move.castle == Castle.WKING or move.castle == Castle.BKING:
@@ -43,10 +47,12 @@ def moveToTensor(move):
     retStart[startLoc]  = 1
     retEnd[endLoc]      = 1
 
-    retStart    = torch.from_numpy(retStart)
-    retEnd      = torch.from_numpy(retEnd)
+    retval = np.concatenate((retStart, retEnd), axis=0)
 
-    return [retStart, retEnd]
+    #retStart    = torch.from_numpy(retStart)
+    #retEnd      = torch.from_numpy(retEnd)
+
+    return torch.from_numpy(retval.astype(np.float))
 
 def gameStateToTensor(gameState):
     """
@@ -83,13 +89,42 @@ def gameStateToTensor(gameState):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-p", "--pgnFiles", help="Filename(s) of pgn games to load",
+                        type=argparse.FileType("r"), nargs="+")
+    group.add_argument("pickledFile", help="Filename of picked alread-parsed pgn file to load",
+                        type = argparse.FileType("r"), nargs="?")
+
+    args = parser.parse_args()
+    
+    rawData = []
+
+    if (args.pgnFiles):
+        for pgnFile in args.pgnFiles:
+            rawData.append(PGNIngest.parseAllLinesInFile(pgnFile))
+    elif (args.pickedFile):
+        pass
+        #this is where we would unpickle things into rawData
+    pdb.set_trace()
+
+    #logging.info(args.pgnFiles)
+    #logging.info(args.pickled)
+
+
+
+
+
     myState = GameState.getInitialState()
     myMove  = Move("b2", "b4")
 
     moveTensor  = moveToTensor(myMove)
     stateTensor = gameStateToTensor(myState)
+    logging.info(stateTensor)
+    logging.info("stateTensor shape: (%s, %s, %s)" % (stateTensor.shape))
+    logging.info(moveTensor)
+    logging.info("moveTensor shape: (%s)" % (moveTensor.shape))
 
-    pdb.set_trace()
 
 
 if __name__ == "__main__":
