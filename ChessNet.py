@@ -12,7 +12,8 @@ import numpy as np
 
 class ChessNet(torch.nn.Module):
     def __init__(self):
-        self.layers = torch.nn.ModuleList()
+        super(ChessNet, self).__init__()
+        self.layers = torch.nn.ModuleList([])
 
         #input dim: 7x8x8
         self.layers.append(torch.nn.Conv2d(7, 21, 3))
@@ -28,7 +29,7 @@ class ChessNet(torch.nn.Module):
         self.layers.append(torch.nn.Linear(256, 192))
         self.layers.append(torch.nn.PReLU())
         self.layers.append(torch.nn.Linear(192,132))
-        self.layers.append(torch.nn.sigmoid())
+        #self.layers.append(torch.nn.Sigmoid())
 
     def forward(self, x):
         for l in self.layers:
@@ -38,16 +39,20 @@ class ChessNet(torch.nn.Module):
         
 
 def trainModel(model, train_loader, optimizer, criterion, num_epochs):
-    for epoch in num_epochs:
-        model.model()
+    for epoch in range(num_epochs):
+        model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             optimizer.zero_grad()
-            output = model(data)
-            loss = criterion(output, target)
+            output = model(data.float())
+            loss = criterion(output, target.float())
             loss.backward()
             optimizer.step()
+            if (batch_idx % 10 == 0):
+                logging.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx * len(data), len(train_loader.dataset),
+                    100. * batch_idx / len(train_loader), loss.item()))
 
-            
+    return model 
 
 
 

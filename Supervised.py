@@ -128,7 +128,7 @@ def getTensorData(args):
         return torch.load(args.tensorData)
         #TODO: do something to load the dataset from file here
 
-def trainNetworkOnData(dataset):
+def trainNetworkOnData(dataset, learn_rate = 0.01):
     """
     Takes in our TensorDataset, trains a ChessNet on it
     """
@@ -139,8 +139,13 @@ def trainNetworkOnData(dataset):
     trainloader = torch.utils.data.DataLoader(train, batch_size=256)
     validloader = torch.utils.data.DataLoader(valid, batch_size=256)
 
-    pdb.set_trace()
     model = ChessNet()
+
+    optimizer = torch.optim.SGD(model.parameters(), lr = learn_rate)
+    #criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
+    
+    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=10)
 
     #TODO: actually train
 
