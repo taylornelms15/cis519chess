@@ -261,6 +261,14 @@ class Move(object):
         self.castle     = castle
         self.promotion  = promotion
 
+    # FOR ABUSING DICTIONARIES
+
+    def _key(self):
+        return (self.startLoc, self.endLoc, self.castle, self.promotion)
+
+    def __hash__(self):
+        return hash(self._key())
+
     # STRING REPRESENTATIONS
     def __repr__(self):
         if self.castle != None:
