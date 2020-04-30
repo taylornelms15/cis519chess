@@ -263,6 +263,13 @@ class Move(object):
 
     # FOR ABUSING DICTIONARIES
 
+    def __eq__(self, other):
+        attrs = self.__slots__
+        for attr in attrs:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+        return True
+
     def _key(self):
         return (self.startLoc, self.endLoc, self.castle, self.promotion)
 
