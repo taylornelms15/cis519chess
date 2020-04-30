@@ -15,7 +15,7 @@ import argparse
 import PGNIngest
 from BitBoard import BitBoard, PieceType, S2I, I2S, PIECELABELS
 from GameState import Turn, Castle, GameState, Move
-from ChessNet import ChessNet, trainModel
+from ChessNet import ChessNet, trainModel, testModel
 
 import pdb
 
@@ -53,6 +53,28 @@ def moveToTensor(move):
     #retEnd      = torch.from_numpy(retEnd)
 
     return torch.from_numpy(retval.astype(np.float))
+
+def tensorToMove(tensor):
+    """
+    Used on the output of the neural network to translate it to a (legal?) move
+    """
+    retval = [None, None]
+    tensorS     = tensor[:66]
+    tensorE     = tensor[66:]
+    startRaw    = tensorS.argmax()
+    endRaw      = tensorE.argmax()
+    if (startRaw > 63):
+        pass
+        #TODO: handle castle
+    else:
+        retval[0] = I2S((startRaw / 8, startRaw % 8))
+    if (endRaw > 63):
+        pass
+        #TODO: handle castle
+    else:
+        retval[1] = I2S((endRaw / 8, endRaw % 8))
+    return retval
+    
 
 def gameStateToTensor(gameState):
     """
@@ -136,19 +158,18 @@ def trainNetworkOnData(dataset, learn_rate = 0.01):
     train, valid = torch.utils.data.random_split(dataset, (int(numItems * 0.8), numItems - int((numItems * 0.8))))
 
 
-    trainloader = torch.utils.data.DataLoader(train, batch_size=256)
-    validloader = torch.utils.data.DataLoader(valid, batch_size=256)
+    trainloader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=True)
+    validloader = torch.utils.data.DataLoader(valid, batch_size=256, shuffle=True)
 
     model = ChessNet()
 
     optimizer = torch.optim.SGD(model.parameters(), lr = learn_rate)
     #criterion = torch.nn.CrossEntropyLoss()
-    criterion = torch.nn.BCEWithLogitsLoss()
+    criterion = torch.nn.BCELoss()
     
     model = trainModel(model, trainloader, optimizer, criterion, num_epochs=10)
-
-    #TODO: actually train
-
+    testModel(model, validloader)
+    testModel(model, trainloader)
 
     return model
 
@@ -156,7 +177,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--outData", help="File to which to write out loaded and parsed data",
                         type=argparse.FileType("wb"), nargs="?")
+    parser.add_argument("-m", "--modelOut", help="File to which to write out loaded, parsed, and trained model",
+                        type=argparse.FileType("wb"), nargs="?")
     group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--modelIn", help="File containing saved trained model",
+                        type=argparse.FileType("rb"), nargs="?")
     group.add_argument("-p", "--pgnFiles", help="Filename(s) of pgn games to load",
                         type=argparse.FileType("r"), nargs="+")
     group.add_argument("pickledFile", help="Filename of picked alread-parsed pgn file to load",
@@ -168,24 +193,40 @@ def main():
 
     args = parser.parse_args()
 
-    data = getTensorData(args)
+    if args.modelIn == None:
+        data = getTensorData(args)
 
-    if args.outData != None:
-        torch.save(data, args.outData)
+        if args.outData != None:
+            torch.save(data, args.outData)
 
-    trainedModel = trainNetworkOnData(data)
+        trainedModel = trainNetworkOnData(data)
+    else:
+        trainedModel = torch.load(args.modelIn)
 
-    """
+    if args.modelOut:
+        torch.save(trainedModel, args.modelOut)
+
     myState = GameState.getInitialState()
     myMove  = Move("b2", "b4")
 
     moveTensor  = moveToTensor(myMove)
     stateTensor = gameStateToTensor(myState)
-    logging.info(stateTensor)
-    logging.info("stateTensor shape: (%s, %s, %s)" % (stateTensor.shape))
-    logging.info(moveTensor)
-    logging.info("moveTensor shape: (%s)" % (moveTensor.shape))
-    """
+
+    moveTensor = moveTensor.float().expand((1, 132))
+    stateTensor = stateTensor.float().expand((1, 7, 8, 8))
+    singleTester = torch.utils.data.TensorDataset(stateTensor, moveTensor)
+    singleLoader = torch.utils.data.DataLoader(singleTester) 
+
+    trainedModel.eval()
+    for data, target in singleLoader:
+        output = trainedModel(data)
+        outputS = output[:, :66]
+        outputE = output[:, 66:]
+        predS = outputS.argmax(dim=1, keepdim = True)
+        predE = outputE.argmax(dim=1, keepdim = True)
+        logging.info(output)
+        logging.info(tensorToMove(output[0]))
+
 
 
 
