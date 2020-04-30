@@ -281,7 +281,7 @@ class Move(object):
         if self.castle != None:
             retval = "<Move C:%s>" % self.castle.name
         else:
-            retval = "<Move %s->%s" % (I2S(self.startLoc), I2S(self.endLoc))
+            retval = "<Move %s->%s>" % (I2S(self.startLoc), I2S(self.endLoc))
         return retval
 
     # SPECIAL CONSTRUCTORS

@@ -30,7 +30,7 @@ def I2S(posTuple):
     (Index 2 String)
     Reverse of the above
     """
-    return "%s%s" % (chr(posTuple[1] + ord('a')), chr(posTuple[0] + ord('0')))
+    return "%s%s" % (chr(posTuple[1] + ord('a')), chr(posTuple[0] + ord('1')))
 
 #First letter is "white" label in FEN, second is "black"
 PIECELABELS = {PieceType.PAWN:      ["P", "p"],
@@ -90,6 +90,13 @@ class BitBoard(object):
         retval = BitBoard(other.pieceType)
         retval.board = np.copy(other.board)
         return retval
+
+    def __hash__(self):
+        board = str(self.board)#little hack
+        return hash(board)
+
+    def __eq__(self, other):
+        return self.pieceType == other.pieceType and np.all(np.equal(self.board, other.board))
         
     ################################
     # QUICK ACCESSORS
