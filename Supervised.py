@@ -11,6 +11,7 @@ import re
 import numpy as np
 import torch
 import argparse
+import pickle
 
 import PGNIngest
 from BitBoard import BitBoard, PieceType, S2I, I2S, PIECELABELS
@@ -107,7 +108,46 @@ def gameStateToTensor(gameState):
 
 
 
+def stateMoveArraysToProbDict(states, moves):
+    """
+    Creates the distribution of states and moves from them
+    As such, the number of instances of (state->move) can be
+    accessed as retval[state][move]
 
+    Just uses nested dictionaries, nothing fancy
+    """
+    retval = {}
+    for (state, move) in zip(states, moves):
+        if state in retval:
+            moveTotals = retval[state]
+        else:
+            moveTotals = {}
+
+        if move in moveTotals:
+            moveTotals[move] += 1
+        else:
+            moveTotals[move] = 1
+
+        retval[state] = moveTotals
+
+
+    return retval
+
+def getStateMoveArrays(args):
+
+    rawData = []
+
+    for pgnFile in args.pgnFiles:
+        rawData += PGNIngest.parseAllLinesInFile(pgnFile)
+    states = []
+    moves  = []
+
+    for gameListing in rawData:
+        otherWay = list(zip(*gameListing))
+        states += list(otherWay[0])
+        moves  += list(otherWay[1])
+
+    return (states, moves)
 
 def getTensorData(args):
     """
@@ -119,26 +159,20 @@ def getTensorData(args):
         rawData = []
 
         if (args.pgnFiles):
-            for pgnFile in args.pgnFiles:
-                rawData += PGNIngest.parseAllLinesInFile(pgnFile)
-        elif (args.pickedFile):
-            pass
-            #this is where we would unpickle things into rawData
+            states, moves = getStateMoveArrays(args)
+        elif (args.pickledFile):
+            inTuple = pickle.load(args.pickledFile)
+            states = inTuple[0]
+            moves = inTuple[1]
 
-        """
-        Currently, `rawData` is a 2d list
-        Each entry is a list representing a single chess game that ended in a checkmate
-        Each such game is a list of (GameState, move) pairs
-        At some point, we may re-evaluate how we represent that set of raw data
-        """
-        states = []
-        moves  = []
+        if args.outPickle != None:
+            outTuple = (states, moves)
+            pickle.dump(outTuple, args.outPickle)
 
-        for gameListing in rawData:
-            otherWay = list(zip(*gameListing))
-            states += list(otherWay[0])
-            moves  += list(otherWay[1])
+        probDict = stateMoveArraysToProbDict(states, moves)
 
+        pdb.set_trace()
+            
         states = torch.stack([gameStateToTensor(x) for x in states])
         moves  = torch.stack([moveToTensor(x)      for x in moves])
 
@@ -154,6 +188,8 @@ def trainNetworkOnData(dataset, learn_rate = 0.01):
     """
     Takes in our TensorDataset, trains a ChessNet on it
     """
+    torch.manual_seed(10)#for reproducability or something
+
     numItems = len(dataset)
     train, valid = torch.utils.data.random_split(dataset, (int(numItems * 0.8), numItems - int((numItems * 0.8))))
 
@@ -167,7 +203,7 @@ def trainNetworkOnData(dataset, learn_rate = 0.01):
     #criterion = torch.nn.CrossEntropyLoss()
     criterion = torch.nn.BCELoss()
     
-    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=10)
+    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=3)
     testModel(model, validloader)
     testModel(model, trainloader)
 
@@ -175,6 +211,8 @@ def trainNetworkOnData(dataset, learn_rate = 0.01):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("-P", "--outPickle", help="File to which to write out picked parsed data",
+                        type=argparse.FileType("wb"), nargs="?")
     parser.add_argument("-o", "--outData", help="File to which to write out loaded and parsed data",
                         type=argparse.FileType("wb"), nargs="?")
     parser.add_argument("-m", "--modelOut", help="File to which to write out loaded, parsed, and trained model",
@@ -184,8 +222,8 @@ def main():
                         type=argparse.FileType("rb"), nargs="?")
     group.add_argument("-p", "--pgnFiles", help="Filename(s) of pgn games to load",
                         type=argparse.FileType("r"), nargs="+")
-    group.add_argument("pickledFile", help="Filename of picked alread-parsed pgn file to load",
-                        type = argparse.FileType("r"), nargs="?")
+    group.add_argument("--pickledFile", help="Filename of picked alread-parsed pgn file to load",
+                        type = argparse.FileType("rb"), nargs="?")
     group.add_argument("-t", "--tensorData", help="Filename of file containing saved tensor data of a dataset",
                         type = argparse.FileType("rb"), nargs="?")
 

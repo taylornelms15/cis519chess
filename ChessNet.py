@@ -17,13 +17,17 @@ class ChessNet(torch.nn.Module):
         self.layers = torch.nn.ModuleList([])
 
         #input dim: 7x8x8
-        self.layers.append(torch.nn.Conv2d(7, 32, 1))
-        #21x6x6
+        self.layers.append(torch.nn.Conv2d(7, 32, 3, padding=1))
+        #32x8x8
+        self.layers.append(torch.nn.BatchNorm2d(32))
+        self.layers.append(torch.nn.ReLU())
+        self.layers.append(torch.nn.Conv2d(32, 32, 3))
+        #32x6x6
         self.layers.append(torch.nn.BatchNorm2d(32))
         self.layers.append(torch.nn.PReLU())
-        self.layers.append(torch.nn.Conv2d(32, 64, 7))
-        self.layers.append(torch.nn.BatchNorm2d(64))
+        self.layers.append(torch.nn.Conv2d(32, 64, 5))
         #64x2x2
+        self.layers.append(torch.nn.BatchNorm2d(64))
         self.layers.append(torch.nn.PReLU())
         self.layers.append(torch.nn.Flatten())
         #256
@@ -49,7 +53,7 @@ def trainModel(model, train_loader, optimizer, criterion, num_epochs):
             loss = criterion(output, target.float())
             loss.backward()
             optimizer.step()
-            if (batch_idx % 10 == 0):
+            if (batch_idx % 20 == 0):
                 logging.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss.item()))
