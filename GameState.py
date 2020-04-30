@@ -99,7 +99,7 @@ class GameState(object):
         return retval
 
     def _key(self):
-        return (self.bitboards, self.turn, self.possibleCastles)#, self.halfmoveClock)
+        return (tuple(self.bitboards), self.turn, tuple(self.possibleCastles))#, self.halfmoveClock)
 
     def __hash__(self):
         return hash(self._key())
