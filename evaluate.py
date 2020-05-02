@@ -43,14 +43,6 @@ class testModel:
 
 def play_game()
 
-
 """
-    Plays a game against models cur and ng and reports the results.
-    :param Config config: config for how to play the game
-    :param ChessModel cur: should be the current model
-    :param ChessModel ng: should be the next generation model
-    :param bool current_white: whether cur should play white or black
-    :return (float, ChessEnv, bool): the score for the ng model
-        (0 for loss, .5 for draw, 1 for win), the env after the game is finished, and a bool
-        which is true iff cur played as white in that game.
-    """
+Plays a game against model.
+"""
