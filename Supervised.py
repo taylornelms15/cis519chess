@@ -23,6 +23,10 @@ import pdb
 KSIDE = 64
 QSIDE = 65
 
+"""
+Utility functions - converting our game objects to/from tensors for CNN purposes
+"""
+
 def moveToTensor(move):
     """
     Converts the Move object to a (set of?) tensor objects
@@ -104,9 +108,9 @@ def gameStateToTensor(gameState):
 
     return torch.from_numpy(retval)
 
-
-
-
+"""
+Functions dealing with the "probability dictionary" directly (no network involved, just stores play information)
+"""
 
 def stateMoveArraysToProbDict(states, moves):
     """
@@ -132,6 +136,11 @@ def stateMoveArraysToProbDict(states, moves):
 
 
     return retval
+
+"""
+Data loading/processing from out of the pgnIngest functions
+Also, some of the data processing/training
+"""
 
 def getStateMoveArrays(args):
 
@@ -210,6 +219,10 @@ def trainNetworkOnData(dataset, learn_rate = 0.001):
     #testModel(model, trainloader)
 
     return model
+
+"""
+Main, command line parsing
+"""
 
 def main():
     parser = argparse.ArgumentParser()
