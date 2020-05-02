@@ -121,10 +121,13 @@ class SupervisedChess(object):
 
         outTensor = self.model.forward(torch.unsqueeze(gameTensor, 0).float())[0]
     
-        utilities = {x: self._outTensorUtilitiesForMove(outTensor, x) for x in legalMoves}
-        utilCombined = {x: self._utilPairToScore(y) for x, y in utilities.items()}
-        utilCombined = [(x, y) for x, y in utilCombined.items()]
-        utilSorted = sorted(utilCombined, key=lambda tup: tup[1], reverse = True)
+        utilities       = {x: self._outTensorUtilitiesForMove(outTensor, x) for x in legalMoves}
+        utilCombined    = {x: self._utilPairToScore(y) for x, y in utilities.items()}
+        utilCombined    = [(x, y) for x, y in utilCombined.items()]
+        utilSorted      = sorted(utilCombined, key=lambda tup: tup[1], reverse = True)
+        justUtilities   = np.array([x[1] for x in utilSorted])
+        justUtilities   /= np.sum(justUtilities) 
+        utilSorted      = [(x[0], y) for x, y in zip(utilSorted, justUtilities)]
 
         return utilSorted
 
@@ -322,7 +325,7 @@ def trainNetworkOnData(dataset, learn_rate = 0.001):
     torch.manual_seed(10)#for reproducability or something
 
     model = ChessNet()
-    model = torch.nn.DataParallel(model)
+    #Potential expansion: putting things onto the GPU for training (relevant if on computer with GPU, which I am not)
     logging.info("Starting ChessNet Training:")
 
     numItems = len(dataset)
@@ -333,9 +336,7 @@ def trainNetworkOnData(dataset, learn_rate = 0.001):
     validloader = torch.utils.data.DataLoader(valid, batch_size=128, shuffle=True)
 
 
-    #optimizer = torch.optim.SGD(model.parameters(), lr = learn_rate)
     optimizer = torch.optim.Adam(model.parameters(), lr = learn_rate)
-    #criterion = torch.nn.CrossEntropyLoss()
     criterion = torch.nn.BCELoss()
     
     model = trainModel(model, trainloader, optimizer, criterion, num_epochs=1)
