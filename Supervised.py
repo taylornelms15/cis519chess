@@ -68,7 +68,9 @@ class SupervisedChess(object):
     
     @classmethod
     def _modelFromPgnOrTensors(cls, args):
+        logging.info("Loading training data:")
         dataset = getTensorData(args)
+        logging.info("Training data loaded")
         model = trainNetworkOnData(dataset)
         return model
 
@@ -319,6 +321,10 @@ def trainNetworkOnData(dataset, learn_rate = 0.001):
     """
     torch.manual_seed(10)#for reproducability or something
 
+    model = ChessNet()
+    model = torch.nn.DataParallel(model)
+    logging.info("Starting ChessNet Training:")
+
     numItems = len(dataset)
     train, valid = torch.utils.data.random_split(dataset, (int(numItems * 0.8), numItems - int((numItems * 0.8))))
 
@@ -326,14 +332,13 @@ def trainNetworkOnData(dataset, learn_rate = 0.001):
     trainloader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=True)
     validloader = torch.utils.data.DataLoader(valid, batch_size=128, shuffle=True)
 
-    model = ChessNet()
 
     #optimizer = torch.optim.SGD(model.parameters(), lr = learn_rate)
     optimizer = torch.optim.Adam(model.parameters(), lr = learn_rate)
     #criterion = torch.nn.CrossEntropyLoss()
     criterion = torch.nn.BCELoss()
     
-    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=2)
+    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=1)
     testModel(model, validloader)
     #testModel(model, trainloader)
 
