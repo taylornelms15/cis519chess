@@ -170,9 +170,10 @@ def getTensorData(args):
             pickle.dump(outTuple, args.outPickle)
 
         probDict = stateMoveArraysToProbDict(states, moves)
+        
+        if args.dictOut != None:
+            pickle.dump(probDict, args.dictOut)
 
-        pdb.set_trace()
-            
         states = torch.stack([gameStateToTensor(x) for x in states])
         moves  = torch.stack([moveToTensor(x)      for x in moves])
 
@@ -184,7 +185,7 @@ def getTensorData(args):
         return torch.load(args.tensorData)
         #TODO: do something to load the dataset from file here
 
-def trainNetworkOnData(dataset, learn_rate = 0.01):
+def trainNetworkOnData(dataset, learn_rate = 0.001):
     """
     Takes in our TensorDataset, trains a ChessNet on it
     """
@@ -194,18 +195,19 @@ def trainNetworkOnData(dataset, learn_rate = 0.01):
     train, valid = torch.utils.data.random_split(dataset, (int(numItems * 0.8), numItems - int((numItems * 0.8))))
 
 
-    trainloader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=True)
-    validloader = torch.utils.data.DataLoader(valid, batch_size=256, shuffle=True)
+    trainloader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=True)
+    validloader = torch.utils.data.DataLoader(valid, batch_size=128, shuffle=True)
 
     model = ChessNet()
 
-    optimizer = torch.optim.SGD(model.parameters(), lr = learn_rate)
+    #optimizer = torch.optim.SGD(model.parameters(), lr = learn_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr = learn_rate)
     #criterion = torch.nn.CrossEntropyLoss()
     criterion = torch.nn.BCELoss()
     
-    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=3)
+    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=2)
     testModel(model, validloader)
-    testModel(model, trainloader)
+    #testModel(model, trainloader)
 
     return model
 
@@ -216,6 +218,8 @@ def main():
     parser.add_argument("-o", "--outData", help="File to which to write out loaded and parsed data",
                         type=argparse.FileType("wb"), nargs="?")
     parser.add_argument("-m", "--modelOut", help="File to which to write out loaded, parsed, and trained model",
+                        type=argparse.FileType("wb"), nargs="?")
+    parser.add_argument("-d", "--dictOut", help="File to which to write out dictionary mapping states to move prob dist",
                         type=argparse.FileType("wb"), nargs="?")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--modelIn", help="File containing saved trained model",
@@ -262,7 +266,8 @@ def main():
         outputE = output[:, 66:]
         predS = outputS.argmax(dim=1, keepdim = True)
         predE = outputE.argmax(dim=1, keepdim = True)
-        logging.info(output)
+        logging.info(outputS)
+        logging.info(outputE)
         logging.info(tensorToMove(output[0]))
 
 
