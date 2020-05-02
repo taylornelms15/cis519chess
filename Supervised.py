@@ -24,6 +24,52 @@ KSIDE = 64
 QSIDE = 65
 
 """
+Supervised Learning Model class
+"""
+
+class SupervisedChess(object):
+    __slots__ = [ "model" ]
+
+    def __init__(self, savedModel = None, pgnTensors = None, pgnFiles = None):
+        elif pgnFiles != None:
+            raise NotImplementedError
+            #TODO: parse pgn files
+        elif pgnTensors != None:
+            raise NotImplementedError
+            #TODO: train model
+        elif savedModel != None:
+            try:
+                self.model = torch.load(savedModel)
+            except Exception as e:
+                logging.error("Bad input %s to SupervisedChess; need file-like or path name for torch to load" % savedModel)
+                raise
+            raise NotImplementedError
+        else:
+            raise ValueError("Cannot make a SupervisedChess object with no input data")
+
+    def getMovePreferenceList(self, gameState, legalMoves):
+        """
+        Given a game state and legal moves from it, calculates where the supervised model would go, in what preference order
+        :param gameState    : GameState object to evaluate
+        :param legalMoves   : List of Move objects
+        :return             : List of Tuples in the form [(move1, weight1), (move2, weight2),...], where the weights are floats that sum to 1
+        """
+        raise NotImplementedError
+
+    def getMovePreference(self, gameState, legalMoves):
+        """
+        Given a game state and legal moves from it, calculates the "best" move from the supervised learner's perspective
+        :param gameState    : GameState object to evaluate
+        :param legalMoves   : List of Move objects
+        :return             : Move that is the "best" choice
+        """
+        move, weight = self.getMovePreferenceList(gameState, legalMoves)[0]
+        return move
+
+    
+
+
+"""
 Utility functions - converting our game objects to/from tensors for CNN purposes
 """
 
