@@ -72,6 +72,41 @@ class SupervisedChess(object):
         model = trainNetworkOnData(dataset)
         return model
 
+    @classmethod
+    def _outTensorUtilitiesForMove(cls, outTensor, move):
+        """
+        Gets the startLoc's value and endLoc's value in the outTensor
+        :return     : (startLocValue, endLocValue)
+        """
+        if move.isCastle():
+            castleType = move.castle
+            if castleType == Castle.WKING or castleType == Castle.BKING:
+                indices = (64, 64 + 66)
+            elif castleType == Castle.WQUEEN or castleType == Castle.BQUEEN:
+                indices = (65, 65 + 66)
+            else:
+                raise ValueError("Invalid castle type")
+            return (outTensor[indices[0]].item(), outTensor[indices[1]].item())
+
+        startTens   = outTensor[:64]
+        endTens     = outTensor[66:-2]
+        startTens   = startTens.reshape((8, 8))
+        endTens     = endTens.reshape((8, 8))
+
+        startUtil   = startTens[move.startLoc].item()
+        endUtil     = endTens[move.endLoc].item()
+
+        return (startUtil, endUtil)
+
+    @classmethod
+    def _utilPairToScore(cls, utilPair):
+        """
+        If our start and end locations have a given utility,
+        this function combines them into a single metric
+        Not sure if we're doing this the right way, but that's only because I don't know what I'm doing
+        """
+        return utilPair[0] * utilPair[1]
+
     def getMovePreferenceList(self, gameState, legalMoves):
         """
         Given a game state and legal moves from it, calculates where the supervised model would go, in what preference order
@@ -79,7 +114,17 @@ class SupervisedChess(object):
         :param legalMoves   : List of Move objects
         :return             : List of Tuples in the form [(move1, weight1), (move2, weight2),...], where the weights are floats that sum to 1
         """
-        raise NotImplementedError
+        self.model.eval()
+        gameTensor = gameStateToTensor(gameState)
+
+        outTensor = self.model.forward(torch.unsqueeze(gameTensor, 0).float())[0]
+    
+        utilities = {x: self._outTensorUtilitiesForMove(outTensor, x) for x in legalMoves}
+        utilCombined = {x: self._utilPairToScore(y) for x, y in utilities.items()}
+        utilCombined = [(x, y) for x, y in utilCombined.items()]
+        utilSorted = sorted(utilCombined, key=lambda tup: tup[1], reverse = True)
+
+        return utilSorted
 
     def getMovePreference(self, gameState, legalMoves):
         """
@@ -134,7 +179,7 @@ def tensorToMove(tensor):
     """
     Used on the output of the neural network to translate it to a (legal?) move
     """
-    #BIG TODO: make an actual Move object out of this
+    #Thought: should we make an actual Move from this? Or is that unnecessary?
 
     retval = [None, None]
     tensorS     = tensor[:66]
@@ -142,13 +187,11 @@ def tensorToMove(tensor):
     startRaw    = tensorS.argmax()
     endRaw      = tensorE.argmax()
     if (startRaw > 63):
-        pass
-        #TODO: handle castle
+        retval[0] = "cast"
     else:
         retval[0] = I2S((startRaw / 8, startRaw % 8))
     if (endRaw > 63):
-        pass
-        #TODO: handle castle
+        retval[1] = "cast"
     else:
         retval[1] = I2S((endRaw / 8, endRaw % 8))
     return retval
@@ -374,8 +417,7 @@ def main():
     bestMove = supChess.getMovePreference(myState, legalMoves)
     logging.info("Best move registered as %s" % bestMove)
 
-
-
+    """
     moveTensor  = moveToTensor(myMove)
     stateTensor = gameStateToTensor(myState)
 
@@ -394,6 +436,7 @@ def main():
         logging.info(outputS)
         logging.info(outputE)
         logging.info(tensorToMove(output[0]))
+    """
 
 
 

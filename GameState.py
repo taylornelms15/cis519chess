@@ -284,6 +284,26 @@ class Move(object):
             retval = "<Move %s->%s>" % (I2S(self.startLoc), I2S(self.endLoc))
         return retval
 
+    # ACCESSORS
+
+    def startsAt(self, startLoc):
+        if isinstance(startLoc, int):
+            startLoc = (startLoc / 8, startLoc % 8)
+        elif isinstance(startLoc, str):
+            startLoc = S2I(startLoc)
+        return startLoc == self.startLoc
+
+    def endsAt(self, endLoc):
+        if isinstance(endLoc, int):
+            endLoc = (endLoc / 8, endLoc % 8)
+        elif isinstance(endLoc, str):
+            endLoc = S2I(endLoc)
+        return endLoc == self.endLoc
+
+    def isCastle(self):
+        retval = self.castle != None
+        return retval
+
     # SPECIAL CONSTRUCTORS
      
     @classmethod
