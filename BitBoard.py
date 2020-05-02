@@ -92,8 +92,8 @@ class BitBoard(object):
         return retval
 
     def __hash__(self):
-        board = str(self.board)#little hack
-        return hash(board)
+        #board = str(self.board)#little hack
+        return hash(self.board.tobytes())
 
     def __eq__(self, other):
         return self.pieceType == other.pieceType and np.all(np.equal(self.board, other.board))

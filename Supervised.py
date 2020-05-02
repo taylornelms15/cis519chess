@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import argparse
 import pickle
+import types
 
 import PGNIngest
 from BitBoard import BitBoard, PieceType, S2I, I2S, PIECELABELS
@@ -22,6 +23,81 @@ import pdb
 
 KSIDE = 64
 QSIDE = 65
+
+"""
+Supervised Learning Model class
+"""
+
+class ArgsFaker(object):
+    """
+    Class that fakes the argparse-created object so we can pass similar file/filename
+    parameters into our parsing/training functions, without having to go through command line parsing
+    """ 
+    
+    def __init__(self, pgnFiles = None, tensorData = None, outModel = None, outDict = None, outTensor = None):
+        self.pgnFiles   = pgnFiles
+        self.tensorData = tensorData
+        self.outModel   = outModel
+        self.outDict    = outDict
+        self.outTensor  = outTensor
+
+class SupervisedChess(object):
+    __slots__ = [ "model" ]
+
+    def __init__(self, savedModel = None, pgnTensors = None, pgnFiles = None, outTensor = None, outModel = None):
+        if pgnFiles != None:
+            pgnFiles = [open(x, "r") if isinstance(x, str) else x for x in pgnFiles]
+            args = ArgsFaker(pgnFiles = pgnFiles, outTensor = outTensor, outModel = outModel)
+            self.model = self._modelFromPgnOrTensors(args)
+        elif pgnTensors != None:
+            pgnTensors = open(pgnTensors, "rb") if isinstance(pgnTensors, str) else pgnTensors
+            args = ArgsFaker(tensorData = pgnTensors, outTensor = outTensor, outModel = outModel)
+            self.model = self._modelFromPgnOrTensors(args)
+        elif savedModel != None:
+            try:
+                self.model = torch.load(savedModel)
+            except Exception as e:
+                logging.error("Bad input %s to SupervisedChess; need file-like or path name for torch to load" % savedModel)
+                raise
+            raise NotImplementedError
+        else:
+            raise ValueError("Cannot make a SupervisedChess object with no input data")
+
+        #now have self.model set
+        if outModel != None:
+            torch.save(self.model, outModel) 
+    
+    @classmethod
+    def _modelFromPgnOrTensors(cls, args):
+        dataset = getTensorData(args)
+        model = trainNetworkOnData(dataset)
+        return model
+
+    def getMovePreferenceList(self, gameState, legalMoves):
+        """
+        Given a game state and legal moves from it, calculates where the supervised model would go, in what preference order
+        :param gameState    : GameState object to evaluate
+        :param legalMoves   : List of Move objects
+        :return             : List of Tuples in the form [(move1, weight1), (move2, weight2),...], where the weights are floats that sum to 1
+        """
+        raise NotImplementedError
+
+    def getMovePreference(self, gameState, legalMoves):
+        """
+        Given a game state and legal moves from it, calculates the "best" move from the supervised learner's perspective
+        :param gameState    : GameState object to evaluate
+        :param legalMoves   : List of Move objects
+        :return             : Move that is the "best" choice
+        """
+        move, weight = self.getMovePreferenceList(gameState, legalMoves)[0]
+        return move
+
+    
+
+
+"""
+Utility functions - converting our game objects to/from tensors for CNN purposes
+"""
 
 def moveToTensor(move):
     """
@@ -104,9 +180,9 @@ def gameStateToTensor(gameState):
 
     return torch.from_numpy(retval)
 
-
-
-
+"""
+Functions dealing with the "probability dictionary" directly (no network involved, just stores play information)
+"""
 
 def stateMoveArraysToProbDict(states, moves):
     """
@@ -133,6 +209,11 @@ def stateMoveArraysToProbDict(states, moves):
 
     return retval
 
+"""
+Data loading/processing from out of the pgnIngest functions
+Also, some of the data processing/training
+"""
+
 def getStateMoveArrays(args):
 
     rawData = []
@@ -153,6 +234,9 @@ def getTensorData(args):
     """
     Takes in parsed command line args, creates a set of tensor data for the (GameState, Move) pairs
     Returns a TensorDataset
+
+    Alternatively: will take any object with a "tensorData" and "pgnFiles" parameter
+    the first should be an open file in "read binary" mode, the latter should be a list of open files in "read" mode
     """
     if args.tensorData == None:
 
@@ -170,9 +254,10 @@ def getTensorData(args):
             pickle.dump(outTuple, args.outPickle)
 
         probDict = stateMoveArraysToProbDict(states, moves)
+        
+        if args.outDict != None:
+            pickle.dump(probDict, args.outDict)
 
-        pdb.set_trace()
-            
         states = torch.stack([gameStateToTensor(x) for x in states])
         moves  = torch.stack([moveToTensor(x)      for x in moves])
 
@@ -184,7 +269,7 @@ def getTensorData(args):
         return torch.load(args.tensorData)
         #TODO: do something to load the dataset from file here
 
-def trainNetworkOnData(dataset, learn_rate = 0.01):
+def trainNetworkOnData(dataset, learn_rate = 0.001):
     """
     Takes in our TensorDataset, trains a ChessNet on it
     """
@@ -194,28 +279,35 @@ def trainNetworkOnData(dataset, learn_rate = 0.01):
     train, valid = torch.utils.data.random_split(dataset, (int(numItems * 0.8), numItems - int((numItems * 0.8))))
 
 
-    trainloader = torch.utils.data.DataLoader(train, batch_size=256, shuffle=True)
-    validloader = torch.utils.data.DataLoader(valid, batch_size=256, shuffle=True)
+    trainloader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=True)
+    validloader = torch.utils.data.DataLoader(valid, batch_size=128, shuffle=True)
 
     model = ChessNet()
 
-    optimizer = torch.optim.SGD(model.parameters(), lr = learn_rate)
+    #optimizer = torch.optim.SGD(model.parameters(), lr = learn_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr = learn_rate)
     #criterion = torch.nn.CrossEntropyLoss()
     criterion = torch.nn.BCELoss()
     
-    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=3)
+    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=2)
     testModel(model, validloader)
-    testModel(model, trainloader)
+    #testModel(model, trainloader)
 
     return model
+
+"""
+Main, command line parsing
+"""
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-P", "--outPickle", help="File to which to write out picked parsed data",
                         type=argparse.FileType("wb"), nargs="?")
-    parser.add_argument("-o", "--outData", help="File to which to write out loaded and parsed data",
+    parser.add_argument("-o", "--outTensor", help="File to which to write out loaded and parsed data",
                         type=argparse.FileType("wb"), nargs="?")
-    parser.add_argument("-m", "--modelOut", help="File to which to write out loaded, parsed, and trained model",
+    parser.add_argument("-m", "--outModel", help="File to which to write out loaded, parsed, and trained model",
+                        type=argparse.FileType("wb"), nargs="?")
+    parser.add_argument("-d", "--outDict", help="File to which to write out dictionary mapping states to move prob dist",
                         type=argparse.FileType("wb"), nargs="?")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--modelIn", help="File containing saved trained model",
@@ -234,15 +326,15 @@ def main():
     if args.modelIn == None:
         data = getTensorData(args)
 
-        if args.outData != None:
-            torch.save(data, args.outData)
+        if args.outTensor != None:
+            torch.save(data, args.outTensor)
 
         trainedModel = trainNetworkOnData(data)
     else:
         trainedModel = torch.load(args.modelIn)
 
-    if args.modelOut:
-        torch.save(trainedModel, args.modelOut)
+    if args.outModel:
+        torch.save(trainedModel, args.outModel)
 
     myState = GameState.getInitialState()
     myMove  = Move("b2", "b4")
@@ -262,7 +354,8 @@ def main():
         outputE = output[:, 66:]
         predS = outputS.argmax(dim=1, keepdim = True)
         predE = outputE.argmax(dim=1, keepdim = True)
-        logging.info(output)
+        logging.info(outputS)
+        logging.info(outputE)
         logging.info(tensorToMove(output[0]))
 
 
