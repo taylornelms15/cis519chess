@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import argparse
 import pickle
+import types
 
 import PGNIngest
 from BitBoard import BitBoard, PieceType, S2I, I2S, PIECELABELS
@@ -27,16 +28,31 @@ QSIDE = 65
 Supervised Learning Model class
 """
 
+class ArgsFaker(object):
+    """
+    Class that fakes the argparse-created object so we can pass similar file/filename
+    parameters into our parsing/training functions, without having to go through command line parsing
+    """ 
+    
+    def __init__(self, pgnFiles = None, tensorData = None, outModel = None, outDict = None, outTensor = None):
+        self.pgnFiles   = pgnFiles
+        self.tensorData = tensorData
+        self.outModel   = outModel
+        self.outDict    = outDict
+        self.outTensor  = outTensor
+
 class SupervisedChess(object):
     __slots__ = [ "model" ]
 
-    def __init__(self, savedModel = None, pgnTensors = None, pgnFiles = None):
-        elif pgnFiles != None:
-            raise NotImplementedError
-            #TODO: parse pgn files
+    def __init__(self, savedModel = None, pgnTensors = None, pgnFiles = None, outTensor = None, outModel = None):
+        if pgnFiles != None:
+            pgnFiles = [open(x, "r") if isinstance(x, str) else x for x in pgnFiles]
+            args = ArgsFaker(pgnFiles = pgnFiles, outTensor = outTensor, outModel = outModel)
+            self.model = self._modelFromPgnOrTensors(args)
         elif pgnTensors != None:
-            raise NotImplementedError
-            #TODO: train model
+            pgnTensors = open(pgnTensors, "rb") if isinstance(pgnTensors, str) else pgnTensors
+            args = ArgsFaker(tensorData = pgnTensors, outTensor = outTensor, outModel = outModel)
+            self.model = self._modelFromPgnOrTensors(args)
         elif savedModel != None:
             try:
                 self.model = torch.load(savedModel)
@@ -46,6 +62,16 @@ class SupervisedChess(object):
             raise NotImplementedError
         else:
             raise ValueError("Cannot make a SupervisedChess object with no input data")
+
+        #now have self.model set
+        if outModel != None:
+            torch.save(self.model, outModel) 
+    
+    @classmethod
+    def _modelFromPgnOrTensors(cls, args):
+        dataset = getTensorData(args)
+        model = trainNetworkOnData(dataset)
+        return model
 
     def getMovePreferenceList(self, gameState, legalMoves):
         """
@@ -208,6 +234,9 @@ def getTensorData(args):
     """
     Takes in parsed command line args, creates a set of tensor data for the (GameState, Move) pairs
     Returns a TensorDataset
+
+    Alternatively: will take any object with a "tensorData" and "pgnFiles" parameter
+    the first should be an open file in "read binary" mode, the latter should be a list of open files in "read" mode
     """
     if args.tensorData == None:
 
@@ -226,8 +255,8 @@ def getTensorData(args):
 
         probDict = stateMoveArraysToProbDict(states, moves)
         
-        if args.dictOut != None:
-            pickle.dump(probDict, args.dictOut)
+        if args.outDict != None:
+            pickle.dump(probDict, args.outDict)
 
         states = torch.stack([gameStateToTensor(x) for x in states])
         moves  = torch.stack([moveToTensor(x)      for x in moves])
@@ -274,11 +303,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-P", "--outPickle", help="File to which to write out picked parsed data",
                         type=argparse.FileType("wb"), nargs="?")
-    parser.add_argument("-o", "--outData", help="File to which to write out loaded and parsed data",
+    parser.add_argument("-o", "--outTensor", help="File to which to write out loaded and parsed data",
                         type=argparse.FileType("wb"), nargs="?")
-    parser.add_argument("-m", "--modelOut", help="File to which to write out loaded, parsed, and trained model",
+    parser.add_argument("-m", "--outModel", help="File to which to write out loaded, parsed, and trained model",
                         type=argparse.FileType("wb"), nargs="?")
-    parser.add_argument("-d", "--dictOut", help="File to which to write out dictionary mapping states to move prob dist",
+    parser.add_argument("-d", "--outDict", help="File to which to write out dictionary mapping states to move prob dist",
                         type=argparse.FileType("wb"), nargs="?")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--modelIn", help="File containing saved trained model",
@@ -297,15 +326,15 @@ def main():
     if args.modelIn == None:
         data = getTensorData(args)
 
-        if args.outData != None:
-            torch.save(data, args.outData)
+        if args.outTensor != None:
+            torch.save(data, args.outTensor)
 
         trainedModel = trainNetworkOnData(data)
     else:
         trainedModel = torch.load(args.modelIn)
 
-    if args.modelOut:
-        torch.save(trainedModel, args.modelOut)
+    if args.outModel:
+        torch.save(trainedModel, args.outModel)
 
     myState = GameState.getInitialState()
     myMove  = Move("b2", "b4")
