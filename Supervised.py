@@ -59,7 +59,6 @@ class SupervisedChess(object):
             except Exception as e:
                 logging.error("Bad input %s to SupervisedChess; need file-like or path name for torch to load" % savedModel)
                 raise
-            raise NotImplementedError
         else:
             raise ValueError("Cannot make a SupervisedChess object with no input data")
 
@@ -135,6 +134,8 @@ def tensorToMove(tensor):
     """
     Used on the output of the neural network to translate it to a (legal?) move
     """
+    #BIG TODO: make an actual Move object out of this
+
     retval = [None, None]
     tensorS     = tensor[:66]
     tensorE     = tensor[66:]
@@ -323,6 +324,12 @@ def main():
 
     args = parser.parse_args()
 
+    supChess = SupervisedChess(savedModel = args.modelIn,
+                               pgnTensors = args.tensorData,
+                               pgnFiles   = args.pgnFiles,
+                               outTensor  = args.outTensor,
+                               outModel   = args.outModel)
+    """
     if args.modelIn == None:
         data = getTensorData(args)
 
@@ -335,9 +342,39 @@ def main():
 
     if args.outModel:
         torch.save(trainedModel, args.outModel)
+    """
+    trainedModel = supChess.model
 
     myState = GameState.getInitialState()
     myMove  = Move("b2", "b4")
+
+    legalMoves = [\
+                  Move('a2', 'a3'),
+                  Move('a2', 'a4'),
+                  Move('b2', 'b3'),
+                  Move('b2', 'b4'),
+                  Move('c2', 'c3'),
+                  Move('c2', 'c4'),
+                  Move('d2', 'd3'),
+                  Move('d2', 'd4'),
+                  Move('e2', 'e3'),
+                  Move('e2', 'e4'),
+                  Move('f2', 'f3'),
+                  Move('f2', 'f4'),
+                  Move('g2', 'g3'),
+                  Move('g2', 'g4'),
+                  Move('h2', 'h3'),
+                  Move('h2', 'h4'),
+                  Move('b1', 'a3'),
+                  Move('b1', 'c3'),
+                  Move('g1', 'f3'),
+                  Move('g1', 'h3'),
+                  ]
+
+    bestMove = supChess.getMovePreference(myState, legalMoves)
+    logging.info("Best move registered as %s" % bestMove)
+
+
 
     moveTensor  = moveToTensor(myMove)
     stateTensor = gameStateToTensor(myState)
