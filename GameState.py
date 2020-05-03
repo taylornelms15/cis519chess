@@ -244,12 +244,25 @@ class GameState(object):
 
     # Chess-specific functions
 
-    def getPossibleMoves(self):
+    def getPossibleMoves(self, board):
         """
         Given the current game state, returns a list of all possible moves that could be performed
         """
         # NOTE: can use the MoveSquares functions to help with this
-        raise NotImplementedError
+
+        legal_moves = []
+
+        for move in board.legal_moves:
+            move_str = move.uci()
+            start_loc = move_str[:2]
+            end_loc = move_str[2:]
+
+            my_move = Move(start_loc, end_loc)
+            legal_moves.append(my_move)
+
+        return legal_moves
+
+        # raise NotImplementedError
 
     def isCheckmate(self):
         """

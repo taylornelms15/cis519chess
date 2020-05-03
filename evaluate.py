@@ -12,6 +12,7 @@ import argparse
 import chess
 from GameState import Turn, Castle, GameState, Move
 from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString, S2I, I2S, Occupier, PIECELABELS
+from mcts1 import Node
 
 
 class testModel:
@@ -26,6 +27,9 @@ class testModel:
         parser = argparse.ArgumentParser()
         self.chessClassW = SL(savedModel="modelBig.ptm")
         self.chessClassB = SL(savedModel="modelBig.ptm")
+        self.myState = GameState.getInitialState()
+        self.board = chess.Board()
+        self.mcts_node = Node(self.myState, self.board)
 
     def reset(self):
         self.board = None
@@ -63,7 +67,7 @@ class testModel:
         """
         Function to get all the legal moves.
         """
-        # Portion of code before the move is made.
+        # used python-chess to get all legal moves.
         legal_moves = []
 
         for move in self.board.legal_moves:
@@ -71,13 +75,14 @@ class testModel:
             start_loc = move_str[:2]
             end_loc = move_str[2:]
 
+            # Casting the move returned by the python-chess to our implementation.
             my_move = Move(start_loc, end_loc)
             legal_moves.append(my_move)
 
         return legal_moves
 
     def log_move(self, move):
-        # Portion of code after the move is made.
+        # change the state of python-chess board in parallel with our gameState.
         final_move = I2S(move.startLoc) + I2S(move.endLoc)
         final_move = chess.Move.from_uci(final_move)
         self.board.push(final_move)
