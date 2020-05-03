@@ -29,7 +29,7 @@ class testModel:
         self.chessClassB = SL(savedModel="modelBig.ptm")
         self.myState = GameState.getInitialState()
         self.board = chess.Board()
-        self.mcts_node = Node(self.myState, self.board)
+        self.mcts_node = Node(self.myState, self.board, self.chessClassB)
 
     def reset(self):
         self.board = None
