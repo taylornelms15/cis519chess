@@ -24,6 +24,7 @@ import pdb
 KSIDE = 64
 QSIDE = 65
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 """
 Supervised Learning Model class
 """
@@ -56,6 +57,7 @@ class SupervisedChess(object):
                 raise
         else:
             self.model = ChessNet()
+        self.model = self.model.to(device)
 
     def trainModel(self, pgnFiles = None, pgnTensors = None, outTensor = None, outModel = None):
         """
@@ -132,6 +134,7 @@ class SupervisedChess(object):
         """
         self.model.eval()
         gameTensor = gameStateToTensor(gameState)
+        gameTensor = gameTensor.to(device)
 
         outTensor = self.model.forward(torch.unsqueeze(gameTensor, 0).float())[0]
     
@@ -324,10 +327,16 @@ def getTensorData(args):
 
         fullDataset = torch.utils.data.TensorDataset(states, moves)            
 
+        if args.outTensor != None:
+            torch.save(fullDataset, args.outTensor)
+
         return fullDataset
 
     else:
-        return torch.load(args.tensorData)
+        fullDataset = torch.load(args.tensorData)
+        if args.outTensor != None:
+            torch.save(fullDataset, args.outTensor)
+        return fullDataset
         #TODO: do something to load the dataset from file here
 
 def trainNetworkOnData(dataset, model = None, learn_rate = 0.001):
