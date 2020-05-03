@@ -4,6 +4,8 @@
 
 Scripts to take in some PGN games and transform them into
 ML-compatible game state representations
+
+Usage - PGNIngest.py [FileName]
 """
 
 import sys
@@ -19,15 +21,15 @@ from BitBoard import PieceType
 
 import pdb
 
-#Thought: initially, just mess around with the checkmate games?
-ENDING_TYPES = {'White checkmated'          : -1,
-                'Black checkmated'          : 1,
-                'Game drawn by stalemate'   : 0,
-                'Game drawn by repetition'  : 0}
+# Thought: initially, just mess around with the checkmate games?
+ENDING_TYPES = {'White checkmated': -1,
+                'Black checkmated': 1,
+                'Game drawn by stalemate': 0,
+                'Game drawn by repetition': 0}
 
 
-#Want pairings of state->move
-#Don't care about rewards at this point; imitation learning should contain those
+# Want pairings of state->move
+# Don't care about rewards at this point; imitation learning should contain those
 
 
 def processPgnHalfmove(move, state):
@@ -46,7 +48,7 @@ def processPgnHalfmove(move, state):
         else:
             return Move.constructCastle(Castle.BQUEEN)
 
-    #regstr = "([QKNRB]?)([a-h]?)([1-8]?)x?([a-h][1-8])((?=QNRB)?)[+#]?"
+    # regstr = "([QKNRB]?)([a-h]?)([1-8]?)x?([a-h][1-8])((?=QNRB)?)[+#]?"
     regstr = "([QKNRB]?)([a-h]?)([1-8]?)x?([a-h][1-8])=?([QNRB]?)[+#]?"
     match = re.match(regstr, move)
     if match == None:
@@ -55,15 +57,16 @@ def processPgnHalfmove(move, state):
 
     return Move.constructFromPgnHalfmove(state, Piece, Rank, File, Endloc, Promotion)
 
+
 def moveListFromGameLine(gLine):
     """
     This will actually need to keep track of the game state, because it affects how the moves get recorded
     """
 
     turnRegex = "\s*\d+\.\s"
-    wholeTurns = re.split(turnRegex, gLine)[1:]#get rid of leading ''
+    wholeTurns = re.split(turnRegex, gLine)[1:]  # get rid of leading ''
 
-    #logging.info(gLine)
+    # logging.info(gLine)
 
     movePairs = []
 
@@ -75,22 +78,23 @@ def moveListFromGameLine(gLine):
         mB = None if len(halfMoves) < 2 else halfMoves[1]
 
         moveW = processPgnHalfmove(mW, gameState)
-        movePairs.append( (gameState, moveW) )     
+        movePairs.append((gameState, moveW))
         gameState = moveW.apply(gameState)
 
         if mB:
             moveB = processPgnHalfmove(mB, gameState)
-            movePairs.append( (gameState, moveB) )     
+            movePairs.append((gameState, moveB))
             gameState = moveB.apply(gameState)
-            
+
     return movePairs
+
 
 def processGameLine(line):
     regstr = "(.*?)\s+{(.*?)}\s+(.*)"
     game, reason, record = re.match(regstr, line).groups()
 
     if reason not in ENDING_TYPES:
-        #for simplicity, ignoring games that did not end in a forced draw or a checkmate
+        # for simplicity, ignoring games that did not end in a forced draw or a checkmate
         return None
 
     try:
@@ -99,8 +103,7 @@ def processGameLine(line):
         return None
 
     return moveList
-    #return ENDING_TYPES[reason]
-
+    # return ENDING_TYPES[reason]
 
 
 def getNextGameLine(pgnFile):
@@ -114,6 +117,7 @@ def getNextGameLine(pgnFile):
         if nextLine.startswith("1."):
             return nextLine.strip()
 
+
 def parseAllLinesInFile(pgnFile):
     retval = []
     while True:
@@ -124,6 +128,7 @@ def parseAllLinesInFile(pgnFile):
         if result is not None:
             retval.append(result)
     return retval
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -155,18 +160,11 @@ def main():
                     else:
                         reward0 += 1
 
-    logging.info("Total games %s, white %s, black %s, draw %s" % (totalGames, rewardW, rewardB, reward0))
-
+    logging.info("Total games %s, white %s, black %s, draw %s" %
+                 (totalGames, rewardW, rewardB, reward0))
 
 
 if __name__ == "__main__":
     setupLogging()
     main()
-
-
-
-
-
-
-
 

@@ -9,13 +9,16 @@ import MoveSquares
 
 import pdb
 
+
 class BadGameParseException(Exception):
     pass
+
 
 class Turn(enum.IntEnum):
     WHITE = 1
     BLACK = -1
-   
+
+
 class Castle(enum.IntEnum):
     """ 
     Four different castle moves:
@@ -25,18 +28,21 @@ class Castle(enum.IntEnum):
         Black Queenside
     Useful for indexing into arrays, probably
     """
-    WKING   = 0
-    WQUEEN  = 1
-    BKING   = 2
-    BQUEEN  = 3
+    WKING = 0
+    WQUEEN = 1
+    BKING = 2
+    BQUEEN = 3
+
 
 class GameState(object):
-    __slots__ = ['bitboards', 'turn', 'possibleCastles', 'halfmoveClock', 'enpassant']
+    __slots__ = ['bitboards', 'turn',
+                 'possibleCastles', 'halfmoveClock', 'enpassant']
     initialBoardFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-    def __init__(self, startingFrom = None, fenString = None):
+    def __init__(self, startingFrom=None, fenString=None):
         if startingFrom:
-            self.bitboards = [BitBoard.copy(x) for x in startingFrom.bitboards]#should do a copy of these, rather than by-reference
+            # should do a copy of these, rather than by-reference
+            self.bitboards = [BitBoard.copy(x) for x in startingFrom.bitboards]
             if startingFrom.turn == Turn.WHITE:
                 self.turn = Turn.BLACK
             else:
@@ -44,13 +50,16 @@ class GameState(object):
             self.possibleCastles = [x for x in startingFrom.possibleCastles]
             self.halfmoveClock = startingFrom.halfmoveClock
             self.enpassant = None
-        elif fenString:#If starting from a fenstring representation of a game state
+        elif fenString:  # If starting from a fenstring representation of a game state
             self.constructFromFenString(fenString)
         else:
-            self.bitboards = [BitBoard() for x in PieceType] #bitfields representing piece positions
-            self.turn = Turn.WHITE #whose turn it is
-            self.possibleCastles = [True, True, True, True]#whether any of the four castle types can be done (only cares about whether the relevant pieces have moved previously, not the other castling rules)
-            self.halfmoveClock = 0#number of half-moves (turns) since last pawn move or piece caputre, for determining draw (50-turn rule)
+            # bitfields representing piece positions
+            self.bitboards = [BitBoard() for x in PieceType]
+            self.turn = Turn.WHITE  # whose turn it is
+            # whether any of the four castle types can be done (only cares about whether the relevant pieces have moved previously, not the other castling rules)
+            self.possibleCastles = [True, True, True, True]
+            # number of half-moves (turns) since last pawn move or piece caputre, for determining draw (50-turn rule)
+            self.halfmoveClock = 0
             self.enpassant = None
 
     def constructFromFenString(self, fenString):
@@ -71,7 +80,7 @@ class GameState(object):
         else:
             self.enpassant = None
         self.possibleCastles = self.possCastlesFromCastleFen(castleString)
-        self.halfmoveClock = 0#TODO: actually read this
+        self.halfmoveClock = 0  # TODO: actually read this
 
     def possCastlesFromCastleFen(self, castleString):
         retval = [False, False, False, False]
@@ -90,7 +99,7 @@ class GameState(object):
         """
         Class constructor that creates the state of the initial chess board
         """
-        return GameState(fenString = cls.initialBoardFen)    
+        return GameState(fenString=cls.initialBoardFen)
 
     # Functions to treat a GameState more atomically in dictionaries and whatnot
 
@@ -99,7 +108,8 @@ class GameState(object):
         return retval
 
     def _key(self):
-        return (tuple(self.bitboards), self.turn, tuple(self.possibleCastles))#, self.halfmoveClock)
+        # , self.halfmoveClock)
+        return (tuple(self.bitboards), self.turn, tuple(self.possibleCastles))
 
     def __hash__(self):
         return hash(self._key())
@@ -114,17 +124,16 @@ class GameState(object):
         for i in range(7, -1, -1):
             line = str(i + 1) + "| "
             for j in range(0, 8):
-                color, pieceType = self.getPieceAtPosition((i, j)) 
+                color, pieceType = self.getPieceAtPosition((i, j))
                 if color == Occupier.CLEAR:
                     token = "-"
                 else:
-                    token = PIECELABELS[pieceType][0 if color == Occupier.WHITE else 1]
+                    token = PIECELABELS[pieceType][0 if color ==
+                                                   Occupier.WHITE else 1]
                 line += token
                 line += " "
             print(line)
         print("   a b c d e f g h")
-                
-                
 
     # Accessors
 
@@ -147,7 +156,7 @@ class GameState(object):
         if isinstance(pos, str):
             pos = S2I(pos)
         elif isinstance(pos, np.ndarray):
-            pos = tuple(pos) 
+            pos = tuple(pos)
 
         for i, board in enumerate(self.getBitboards()):
             if isinstance(board, np.ndarray):
@@ -157,19 +166,25 @@ class GameState(object):
                 return board[pos], PieceType(i)
         return Occupier.CLEAR, None
 
-    def getPawns(self, color = Occupier.CLEAR):
+    def getPawns(self, color=Occupier.CLEAR):
         return self.getPiecesOfColor(self, PieceType.PAWN, color)
-    def getRooks(self, color = Occupier.CLEAR):
+
+    def getRooks(self, color=Occupier.CLEAR):
         return self.getPiecesOfColor(self, PieceType.ROOK, color)
-    def getKnights(self, color = Occupier.CLEAR):
+
+    def getKnights(self, color=Occupier.CLEAR):
         return self.getPiecesOfColor(self, PieceType.KNIGHT, color)
-    def getBishops(self, color = Occupier.CLEAR):
+
+    def getBishops(self, color=Occupier.CLEAR):
         return self.getPiecesOfColor(self, PieceType.BISHOP, color)
-    def getQueens(self, color = Occupier.CLEAR):
+
+    def getQueens(self, color=Occupier.CLEAR):
         return self.getPiecesOfColor(self, PieceType.QUEEN, color)
-    def getKings(self, color = Occupier.CLEAR):
+
+    def getKings(self, color=Occupier.CLEAR):
         return self.getPiecesOfColor(self, PieceType.KING, color)
-    def getPiecesOfColor(self, pieceType, color = Occupier.CLEAR):
+
+    def getPiecesOfColor(self, pieceType, color=Occupier.CLEAR):
         board = self.bitboards[pieceType]
         if isinstance(board, np.ndarray):
             board = board[()]
@@ -221,7 +236,7 @@ class GameState(object):
         if isinstance(pos, str):
             pos = S2I(pos)
         if isinstance(piece, str):
-            logging.error(piece) 
+            logging.error(piece)
         board = self.getBitboards()[piece]
         if isinstance(board, np.ndarray):
             board = board[()]
@@ -233,7 +248,7 @@ class GameState(object):
         """
         Given the current game state, returns a list of all possible moves that could be performed
         """
-        #NOTE: can use the MoveSquares functions to help with this
+        # NOTE: can use the MoveSquares functions to help with this
         raise NotImplementedError
 
     def isCheckmate(self):
@@ -248,18 +263,19 @@ class GameState(object):
         """
         raise NotImplementedError
 
+
 class Move(object):
     __slots__ = ["startLoc", "endLoc", "castle", "promotion"]
 
-    def __init__(self, startLoc, endLoc, castle = None, promotion = None):
+    def __init__(self, startLoc, endLoc, castle=None, promotion=None):
         if isinstance(startLoc, str):
             startLoc = S2I(startLoc)
         if isinstance(endLoc, str):
             endLoc = S2I(endLoc)
-        self.startLoc   = startLoc
-        self.endLoc     = endLoc
-        self.castle     = castle
-        self.promotion  = promotion
+        self.startLoc = startLoc
+        self.endLoc = endLoc
+        self.castle = castle
+        self.promotion = promotion
 
     # FOR ABUSING DICTIONARIES
 
@@ -305,46 +321,47 @@ class Move(object):
         return retval
 
     # SPECIAL CONSTRUCTORS
-     
+
     @classmethod
     def constructCastle(cls, castleType):
         return Move(None, None, castleType, None)
 
     @classmethod
     def constructFromPgnHalfmove(cls, gameState, Piece, Rank, File, Endloc, Promotion):
-        #remember: order is (file)(rank) (files are letters, ranks are numbers)
+        # remember: order is (file)(rank) (files are letters, ranks are numbers)
         endLoc = S2I(Endloc)
         if Piece == '':
             Piece = PieceType.PAWN
         else:
-            matchingTypes = [x for x in PIECELABELS.keys() if PIECELABELS[x][0] == Piece]
+            matchingTypes = [
+                x for x in PIECELABELS.keys() if PIECELABELS[x][0] == Piece]
             Piece = matchingTypes[0]
         if Promotion != '':
-            matchingTypes = [x for x in PIECELABELS.keys() if PIECELABELS[x][0] == Promotion]
+            matchingTypes = [x for x in PIECELABELS.keys(
+            ) if PIECELABELS[x][0] == Promotion]
             Promotion = matchingTypes[0]
-
-
-        #figure out what fucking piece is moving
+        # figure out what fucking piece is moving
         possibleMovers = gameState.getPiecesOfColor(Piece, gameState.turn)
         candidates = []
         for candidate in possibleMovers:
-            mask = MoveSquares.makeMoveMask(Piece, gameState.turn, candidate, gameState)
+            mask = MoveSquares.makeMoveMask(
+                Piece, gameState.turn, candidate, gameState)
             if mask[endLoc]:
                 candidates.append(candidate)
 
-        if len(candidates) > 1:#if piece ambiguity
+        if len(candidates) > 1:  # if piece ambiguity
             if File != '':
                 candidates = [x for x in candidates if I2S(x)[0] == File]
             if Rank != '':
                 candidates = [x for x in candidates if I2S(x)[1] == Rank]
-        
-        if len(candidates) != 1:
-            #pdb.set_trace()
-            #raise ValueError("Still have piece ambiguity")
-            raise BadGameParseException("Some sort of piece ambiguity or emptiness")
-            
-        startLoc = candidates[0]
 
+        if len(candidates) != 1:
+            # pdb.set_trace()
+            #raise ValueError("Still have piece ambiguity")
+            raise BadGameParseException(
+                "Some sort of piece ambiguity or emptiness")
+
+        startLoc = candidates[0]
 
         retval = Move(startLoc, endLoc, None, Promotion)
         return retval
@@ -352,7 +369,7 @@ class Move(object):
     # APPLYING GAME STATE TRANSFORMATIONS
 
     def _applyCastle(self, gameState):
-        retval = GameState(startingFrom = gameState)
+        retval = GameState(startingFrom=gameState)
         retval.incHalfmoveClock()
         if self.castle == Castle.WKING:
             retval.clearPieceInSpace("e1")
@@ -387,7 +404,8 @@ class Move(object):
             retval.modCastleBecauseMove("a8")
             return retval
         else:
-            raise ValueError("Applying a castle move in not a castle move (????)")
+            raise ValueError(
+                "Applying a castle move in not a castle move (????)")
 
     def apply(self, gameState):
         """
@@ -399,39 +417,25 @@ class Move(object):
         if self.castle != None:
             return self._applyCastle(gameState)
 
-        retval = GameState(startingFrom = gameState)
+        retval = GameState(startingFrom=gameState)
         retval.incHalfmoveClock()
 
-        #First: find what's moving (pick up piece)
+        # First: find what's moving (pick up piece)
         color, pieceType = retval.getPieceAtPosition(self.startLoc)
         if color == Occupier.CLEAR:
             raise ValueError("Didn't find a piece at the startloc to move?")
 
-        #Clear spots for src and dest
+        # Clear spots for src and dest
         retval.clearPieceInSpace(self.startLoc)
         retval.modCastleBecauseMove(self.startLoc)
         retval.clearPieceInSpace(self.endLoc)
 
-        #Put piece in correct spot
+        # Put piece in correct spot
         if self.promotion != None and self.promotion != '':
             pieceType = self.promotion
         retval.putPieceInSpace(pieceType, color, self.endLoc)
 
         return retval
-
-  
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -442,8 +446,6 @@ def main():
     print(S2I("e2"))
 
 
-
 if __name__ == "__main__":
     setupLogging()
     main()
-
