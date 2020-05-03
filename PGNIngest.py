@@ -23,9 +23,9 @@ import pdb
 
 # Thought: initially, just mess around with the checkmate games?
 ENDING_TYPES = {'White checkmated': -1,
-                'Black checkmated': 1,
-                'Game drawn by stalemate': 0,
-                'Game drawn by repetition': 0}
+                'Black checkmated': 1}
+                #'Game drawn by stalemate': 0,
+                #'Game drawn by repetition': 0}
 
 
 # Want pairings of state->move
@@ -58,7 +58,7 @@ def processPgnHalfmove(move, state):
     return Move.constructFromPgnHalfmove(state, Piece, Rank, File, Endloc, Promotion)
 
 
-def moveListFromGameLine(gLine):
+def moveListFromGameLine(gLine, reason):
     """
     This will actually need to keep track of the game state, because it affects how the moves get recorded
     """
@@ -78,12 +78,13 @@ def moveListFromGameLine(gLine):
         mB = None if len(halfMoves) < 2 else halfMoves[1]
 
         moveW = processPgnHalfmove(mW, gameState)
-        movePairs.append((gameState, moveW))
+        if (ENDING_TYPES[reason] == 1):
+            movePairs.append((gameState, moveW))#only care about white turns if white won
         gameState = moveW.apply(gameState)
 
         if mB:
             moveB = processPgnHalfmove(mB, gameState)
-            movePairs.append((gameState, moveB))
+            movePairs.append((gameState, moveB))#only care about black turns if black won
             gameState = moveB.apply(gameState)
 
     return movePairs
@@ -98,7 +99,7 @@ def processGameLine(line):
         return None
 
     try:
-        moveList = moveListFromGameLine(game)
+        moveList = moveListFromGameLine(game, reason)
     except BadGameParseException as e:
         return None
 
@@ -119,6 +120,7 @@ def getNextGameLine(pgnFile):
 
 
 def parseAllLinesInFile(pgnFile):
+    logging.info("Parsing games in file %s" % pgnFile)
     retval = []
     while True:
         nextGameLine = getNextGameLine(pgnFile)
@@ -127,6 +129,7 @@ def parseAllLinesInFile(pgnFile):
         result = processGameLine(nextGameLine)
         if result is not None:
             retval.append(result)
+    logging.info("Parsed %s valid state-move pairs for file %s" % (len(retval), pgnFile))
     return retval
 
 
