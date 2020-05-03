@@ -135,6 +135,61 @@ class GameState(object):
             print(line)
         print("   a b c d e f g h")
 
+    def getFenString(self):
+        """
+        Converts the GameState to its equivalent FEN string
+        """
+        retval = ""
+        #piece positions
+        for i in range(7, -1, -1):
+            empties = 0
+            for j in range(0, 8, 1):
+                color, pieceType = self.getPieceAtPosition((i, j))
+                if color == Occupier.CLEAR:
+                    empties += 1
+                    if j == 7:
+                        retval += str(empties)
+                else:
+                    if empties != 0:
+                        retval += str(empties)
+                        empties = 0
+                    retval += PIECELABELS[pieceType][0 if color == Occupier.WHITE else 1]
+
+            if i != 0:
+                retval += "/"
+
+        #turn
+        if self.getTurn() == Turn.WHITE:
+            retval += " w"
+        else:
+            retval += " b"
+
+        #castles
+        retval += " "
+        poss = self.getPossibleCastles()
+        if not (poss[0] or poss[1] or poss[2] or poss[3]):
+            retval += "-"
+        else:
+            if poss[Castle.WKING]:
+                retval += "K"
+            if poss[Castle.WQUEEN]:
+                retval += "Q"
+            if poss[Castle.BKING]:
+                retval += "k"
+            if poss[Castle.BQUEEN]:
+                retval += "q"
+
+        #en passant
+        retval += " - "#future development: allow for en passant moves
+
+        #halfmove
+        retval += str(self.getHalfmoveClock())
+
+        #overall move number
+        retval += " 1"#not keeping track of overall moves, just pretend it's always turn one
+                
+        return retval
+
     # Accessors
 
     def getBitboards(self):
@@ -195,6 +250,9 @@ class GameState(object):
     def incHalfmoveClock(self):
         self.halfmoveClock += 1
 
+    def clearHalfmoveClock(self):
+        self.halfmoveClock = 0
+
     def toggleTurn(self):
         if self.turn == Turn.WHITE:
             self.turn = Turn.BLACK
@@ -223,14 +281,20 @@ class GameState(object):
             self.possibleCastles[Castle.BKING] = False
 
     def clearPieceInSpace(self, pos):
+        """
+        Returns whether a piece was in that space
+        """
         if isinstance(pos, str):
             pos = S2I(pos)
 
+        wasOcc = False
         boards = self.getBitboards()
         for board in boards:
-            if isinstance(board, np.ndarray):
-                board = board[()]
+            oldVal = board[pos]
             board[pos] = Occupier.CLEAR
+            if oldVal != Occupier.CLEAR:
+                wasOcc = True
+        return wasOcc
 
     def putPieceInSpace(self, piece, color, pos):
         if isinstance(pos, str):
@@ -437,11 +501,15 @@ class Move(object):
         color, pieceType = retval.getPieceAtPosition(self.startLoc)
         if color == Occupier.CLEAR:
             raise ValueError("Didn't find a piece at the startloc to move?")
+        if pieceType == PieceType.PAWN:
+            retval.clearHalfmoveClock()
 
         # Clear spots for src and dest
         retval.clearPieceInSpace(self.startLoc)
         retval.modCastleBecauseMove(self.startLoc)
-        retval.clearPieceInSpace(self.endLoc)
+        wasCapture = retval.clearPieceInSpace(self.endLoc)
+        if wasCapture:
+            retval.clearHalfmoveClock()
 
         # Put piece in correct spot
         if self.promotion != None and self.promotion != '':
@@ -455,6 +523,7 @@ class Move(object):
 def main():
     myState = GameState.getInitialState()
     logging.info(myState)
+    logging.info(myState.getFenString())
 
     print(S2I("e2"))
 
