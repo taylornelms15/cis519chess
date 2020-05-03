@@ -55,7 +55,7 @@ class SupervisedChess(object):
                 logging.error("Bad input %s to SupervisedChess; need file-like or path name for torch to load" % savedModel)
                 raise
         else:
-            model = ChessNet()
+            self.model = ChessNet()
 
     def trainModel(self, pgnFiles = None, pgnTensors = None, outTensor = None, outModel = None):
         """
