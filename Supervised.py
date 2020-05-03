@@ -21,6 +21,8 @@ from ChessNet import ChessNet, trainModel, testModel
 
 import pdb
 
+torch.manual_seed(10)#for reproducability or something
+
 KSIDE = 64
 QSIDE = 65
 
@@ -324,6 +326,9 @@ def getTensorData(args):
 
         fullDataset = torch.utils.data.TensorDataset(states, moves)            
 
+        if args.outTensor:
+            torch.save(args.outTensor)
+
         return fullDataset
 
     else:
@@ -334,7 +339,6 @@ def trainNetworkOnData(dataset, model = None, learn_rate = 0.001):
     """
     Takes in our TensorDataset, trains a ChessNet on it
     """
-    torch.manual_seed(10)#for reproducability or something
     
     if model == None:
         model = ChessNet()
