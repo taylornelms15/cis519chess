@@ -17,6 +17,7 @@ import functools
 
 import pdb
 
+
 class Conv2dAuto(nn.Conv2d):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -152,10 +153,14 @@ class ChessNet(torch.nn.Module):
         return torch.cat((starts, ends), dim=1)
         
 
-def trainModel(model, train_loader, optimizer, criterion, num_epochs):
+def trainModel(model, train_loader, optimizer, criterion, num_epochs, device = None):
+    if device == None:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     for epoch in range(num_epochs):
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
+            data = data.to(device)
+            target = target.to(device)
             optimizer.zero_grad()
             output = model(data.float())
             loss = criterion(output, target.float())
@@ -169,15 +174,20 @@ def trainModel(model, train_loader, optimizer, criterion, num_epochs):
     return model 
 
 
-def testModel(model, test_loader):
+def testModel(model, test_loader, device = None):
+    if device == None:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.eval()
     test_loss = 0
     correctS = 0
     correctE = 0
     with torch.no_grad():
         for data, target in test_loader:
-            output = model(data.float())
-            test_loss += torch.nn.functional.binary_cross_entropy(output, target.float(), reduction='sum').item()/len(data)  # sum up batch loss
+            data        = data.to(device)
+            target      = target.to(device)
+            dataLen     = len(data)
+            output      = model(data.float())
+            test_loss   += torch.nn.functional.binary_cross_entropy(output, target.float(), reduction='sum').item()/dataLen  # sum up batch loss
             outputS = output[:, :66]
             outputE = output[:, 66:]
             targetS = target[:, :66]
