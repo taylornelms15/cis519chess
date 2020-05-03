@@ -13,6 +13,7 @@ import chess
 from GameState import Turn, Castle, GameState, Move
 from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString, S2I, I2S, Occupier, PIECELABELS
 from mcts1 import Node
+import chess.pgn
 
 
 class testModel:
@@ -24,15 +25,15 @@ class testModel:
         """
         :param config: Config to use to control how evaluation should work
         """
-        parser = argparse.ArgumentParser()
         self.chessClassW = SL(savedModel="modelBig.ptm")
-        self.chessClassB = SL(savedModel="modelBig.ptm")
+        self.chessClassB = SL(savedModel="modelBigBig.ptm")
         self.myState = GameState.getInitialState()
         self.board = chess.Board()
         self.mcts_node = Node(self.myState, self.board, self.chessClassB)
+        self.num_games = 4
+        self.max_game_length = 1000
 
     def reset(self):
-        self.board = None
         self.num_halfmoves = 0
         self.winner = None  # type: Winner
         self.turn = None
@@ -87,53 +88,118 @@ class testModel:
         final_move = chess.Move.from_uci(final_move)
         self.board.push(final_move)
 
+    def save_pgn(self, board, n_game, name, n_iter, white="WHITE", black="BLACK"):
+        game = chess.pgn.Game()
+        game.headers["Event"] = 'Self-Play'
+        game.headers["Site"] = 'None'
+        game.headers["Date"] = "123"
+        game.headers["Round"] = n_game
+        game.headers["White"] = white
+        game.headers["Black"] = black
+        game.headers["WhiteElo"] = "NA"
+        game.headers["BlackElo"] = "NA"
+        game.headers["WhiteRD"] = "NA"
+        game.headers["BlackRD"] = "NA"
+        game.headers["WhiteIsComp"] = "NA"
+        game.headers["TimeControl"] = "na"
+        game.headers["Date"] = board.result()
+        game.headers["Time"] = "na"
+        game.headers["WhiteClock"] = board.result()
+        game.headers["BlackClock"] = "na"
+        game.headers["ECO"] = "na"
+        game.headers["Plycount"] = "na"
+        game.headers["Result"] = board.result()
+
+        moves = [move for move in board.move_stack]
+        node = game.add_variation(moves.pop(0))
+        n_move = 1
+        for move in moves:
+            node = node.add_variation(move)
+            n_move += 1
+
+        # Update this path
+        path = 'C:\\Personal\\Masters Study Material\\CIS 519\\Project\\cis519chess\\games'
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        with open(path + '\\self-play.pgn'.format(n_iter=n_iter), 'a') as pgn:
+            pgn.write(game.accept(chess.pgn.StringExporter()))
+            pgn.write('\n\n')
+
     def play_game(self):
         """
             Load the model and check if the model performs better and save the result.
             """
         self.reset()
         i = 0
+        j = 0
+        self.Player1Score = 0.0
+        self.Player2Score = 0.0
+        for j in range(self.num_games):
 
-        while self.winner is None:
-            if i % 2 == 0:
-                legal_move = self.legal_move()
-                move = self.chessClassW.getMovePreference(
-                    self.myState, legal_move)
-
-                self.log_move(move)
-                self.myState = move.apply(self.myState)
-
+            if(j % 2 == 0):
+                Player1 = self.chessClassW
+                Player2 = self.chessClassB
             else:
+                Player2 = self.chessClassW
+                Player1 = self.chessClassB
 
-                legal_move = self.legal_move()
-                move = self.chessClassB.getMovePreference(
-                    self.myState, legal_move)
+            while self.winner is None:
+                if i % 2 == 0:
+                    legal_move = self.legal_move()
+                    move = Player1.getMovePreference(
+                        self.myState, legal_move)
 
-                self.log_move(move)
-                self.myState = move.apply(self.myState)
+                    self.log_move(move)
+                    self.myState = move.apply(self.myState)
 
-            self.num_halfmoves += 1
-
-            if self.board.result(claim_draw=True) != "*":
-                if self.winner is None:
-                    self.result = self.board.result(claim_draw=True)
-                if self.result == '1-0':
-                    self.winner = 1
-                elif self.result == '0-1':
-                    self.winner = -1
                 else:
-                    self.winner = 0.5
 
-            print(move)
-            print()
-            i = i + 1
+                    legal_move = self.legal_move()
+                    move = Player2.getMovePreference(
+                        self.myState, legal_move)
 
-        print(self.result)
+                    self.log_move(move)
+                    self.myState = move.apply(self.myState)
 
-        # def evaluate_model(self):
-        #     """
-        #     Given a model, evaluates it by playing a bunch of games against the current model.
-        #     """
+                self.num_halfmoves += 1
+
+                if self.num_halfmoves >= self.max_game_length:
+                    break
+
+                if self.board.result() != "*":
+                    if self.winner is None:
+                        self.result = self.board.result()
+                    if self.result == '1-0':
+                        if(j % 2 == 0):
+                            self.Player1Score += 1
+                            self.winner = 1
+                        else:
+                            self.Player2Score += 1
+                            self.winner = 1
+
+                    elif self.result == '0-1':
+                        if(j % 2 == 0):
+                            self.Player1Score += 1
+                            self.winner = 1
+                        else:
+                            self.Player2Score += 1
+                            self.winner = 1
+                    else:
+                        self.winner = 0.5
+                        self.Player1Score += 0.5
+                        self.Player2Score += 0.5
+                i = i + 1
+
+            print(self.result)
+            self.save_pgn(board=self.board, n_game=j, name="Harsh", n_iter=i)
+            self.winner = None
+            self.num_halfmoves = 0
+            i = 0
+            self.reset()
+
+            print(self.Player1Score)
+            print(self.Player2Score)
 
 
 def main():

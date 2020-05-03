@@ -24,7 +24,7 @@ class testModel:
         :param config: Config to use to control how evaluation should work
         """
         parser = argparse.ArgumentParser()
-        self.chessClassW = SL(savedModel="modelBig.ptm")
+        self.chessClassW = SL(savedModel="modelBigBig.ptm")
         self.chessClassB = SL(savedModel="modelBig.ptm")
 
     def reset(self):
