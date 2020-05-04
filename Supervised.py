@@ -51,14 +51,14 @@ class SupervisedChess(object):
         Initializes the SupervisedChess object, with an optional "already trained model" torch file
         :param savedModel:      Filepath (or open File object) for the pre-trained pytorch model
         """
+        self.model = ChessNet()
         if savedModel != None:
             try:
-                self.model = torch.load(savedModel)
+                #self.model = torch.load(savedModel)
+                self.model.load_state_dict(torch.load(savedModel, map_location=device))
             except Exception as e:
                 logging.error("Bad input %s to SupervisedChess; need file-like or path name for torch to load" % savedModel)
                 raise
-        else:
-            self.model = ChessNet()
         self.model = self.model.to(device)
 
     def trainModel(self, pgnFiles = None, pgnTensors = None, outTensor = None, outModel = None):
@@ -83,7 +83,7 @@ class SupervisedChess(object):
 
         #now have self.model set
         if outModel != None:
-            torch.save(self.model, outModel) 
+            torch.save(self.model.state_dict(), outModel) 
     
     def _modelFromPgnOrTensors(self, args):
         logging.info("Loading training data:")
