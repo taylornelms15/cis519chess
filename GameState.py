@@ -339,6 +339,15 @@ class GameState(object):
         """
         raise NotImplementedError
 
+    def isGameOver(self):
+        """
+        Boolean for whether this game state is finished or not.
+        """
+        fen_str = self.getFenString()
+
+        board = chess.Board(fen=fen_str)
+        return board.is_game_over()
+
     def isCheck(self):
         """
         Booleanfor whether this game state has the current player's king in check

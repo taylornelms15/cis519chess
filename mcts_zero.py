@@ -17,7 +17,7 @@ class MCTS:
         self.P = defaultdict(lambda: 0)
 
     def add_node(self, node):
-        self.nodes[(node.parent, node.state, node.move)] = node
+        self.nodes[(node.parent, node.gameState, node.move)] = node
         for move in node.unexplored_children:
             node.add_child(move)
             self.Q[(node, move)] = 0
@@ -37,24 +37,21 @@ class MCTS:
         if node not in self.nodes.values():
             self.add_node(node)
 
-            # pi, v = self.nnet.predict(as_board(node.state))
-
             legal_moves = node.gameState.getPossibleMoves()
-
             prob_list = self.model.getMovePreferenceList(node.gameState, legal_moves)
-            # pi, v, compressed_pi = process_nnet_output(pi, v, legal_moves)
 
             self.P[node.gameState] = prob_list
             for move, i in zip(legal_moves, range(len(legal_moves))):
                 for n in range(len(prob_list)):
                     if(prob_list[n][0] == move):
-                        self.P[(node.state, move)] = prob_list[n][0]
+                        self.P[(node.gameState, move)] = prob_list[n][1]
 
-            return -prob_list[0][0]
+            return -prob_list[0][1] # Doubt
 
         # SELECTION
         best_child = node.select_best_child()
         best_move = best_child.move
+
 
         # SIMULATION
         v = self.search(best_child)
@@ -63,10 +60,12 @@ class MCTS:
         actual_q = self.Q[(node.gameState, best_move)]
         actual_n = self.N[(node.gameState, best_move)]
 
-        self.Q[(node.state, best_move)] = (actual_n * actual_q + v) / (actual_n + 1)
-        self.N[(node.state, best_move)] += 1
+        # This steps update the Q and N value for the node 
+        # because it was visited more than once.
+        self.Q[(node.gameState, best_move)] = (actual_n * actual_q + v) / (actual_n + 1)
+        self.N[(node.gameState, best_move)] += 1
 
-        return -v
+        return -v # Doubt
 
     class Node:
         def __init__(self, mcts_instance, parent=None, gameState=None, move=None):
@@ -88,7 +87,6 @@ class MCTS:
             return sorted(self.children, key=lambda child: self.get_ucb(self.gameState, child.move))[0]
 
         def add_child(self, child_move):
-            # child_state = as_board(self.gameState, move=child_move)
             child_state = child_move.apply(self.gameState)
             child = MCTS.Node(mcts_instance=self.MCTS, parent=self, gameState=child_state, move=child_move)
             self.children.append(child)
