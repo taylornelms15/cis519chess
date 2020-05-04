@@ -6,6 +6,7 @@ import numpy as np
 from log import setupLogging
 from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString, S2I, I2S, Occupier, PIECELABELS
 import MoveSquares
+import chess
 
 import pdb
 
@@ -308,13 +309,17 @@ class GameState(object):
 
     # Chess-specific functions
 
-    def getPossibleMoves(self, board):
+    def getPossibleMoves(self, board=None):
         """
         Given the current game state, returns a list of all possible moves that could be performed
         """
         # NOTE: can use the MoveSquares functions to help with this
 
         legal_moves = []
+
+        fen_str = self.getFenString()
+
+        board = chess.Board(fen=fen_str)
 
         for move in board.legal_moves:
             move_str = move.uci()
