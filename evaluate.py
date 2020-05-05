@@ -25,8 +25,8 @@ class testModel:
         """
         :param config: Config to use to control how evaluation should work
         """
-        self.chessClassW = SL(savedModel="modelBig.ptm")
-        self.chessClassB = SL(savedModel="modelBigBig.ptm")
+        self.chessClassW = SL(savedModel="modelBig2016.ptm")
+        self.chessClassB = SL(savedModel="modelBig2016.ptm")
         self.myState = GameState.getInitialState()
         self.board = chess.Board()
         self.mcts_node = Node(self.myState, self.board, self.chessClassB)
