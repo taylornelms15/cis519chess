@@ -11,11 +11,11 @@ from mcts_zero import MCTS
 
 class SelfPlay:
     def __init__(self):
-        self.n_games_per_iteration = 100
-        self.model = SL(savedModel="modelBig.ptm")
+        self.n_games_per_iteration = 200
+        self.model = SL(savedModel="modelBig2016.ptm")
         # MCTS arguments
         self.c_puct = 0.1
-        self.mcts_simulations_per_state = 20
+        self.mcts_simulations_per_state = 100
         self.mcts = MCTS(self.model, c_puct=self.c_puct)
 
         # Debug
@@ -43,7 +43,6 @@ class SelfPlay:
             examples.append([actual_node.move, self.mcts.P[actual_state], None])
             best_move = actual_node.select_best_child().move
 
-            # Debug Start.
             # I am just keeping track of the board state using python-chess
             if(i% 20 == 0):
                 print(board.fen())
@@ -54,7 +53,6 @@ class SelfPlay:
             final_move = I2S(best_move.startLoc) + I2S(best_move.endLoc)
             final_move = chess.Move.from_uci(final_move)
             board.push(final_move)
-            # Debug End
 
             new_state = deepcopy(actual_state)
             new_state = best_move.apply(new_state)
@@ -64,25 +62,59 @@ class SelfPlay:
             if board.result() != "*":
                 if self.winner is None:
                     self.result = board.result()
+                    
                 if self.result == '1-0':
-                    print("chicken dinner ww")
-                    break
+                    print("White winner.")
                 elif self.result == '0-1':
-                    print("chicken dinner bb")
-                    break
+                    print("Black winner.")
                 else:
-                    print("chicken dinner draw.")
-                    break
-            
-            # Break if game is Over!!
-            if new_state.isGameOver() or board.is_game_over():
-                # examples = self.set_winner(examples, new_state.result())
-                print("chicken dinner!")
-                return examples # Need to check what exactly to return.
+                    print("Draw.. Chicken dinner not served..")
+
+                return board
+
+    def save_pgn(self, board, n_game, name, n_iter, white="WHITE", black="BLACK"):
+        game = chess.pgn.Game()
+        game.headers["Event"] = 'Self-Play'
+        game.headers["Site"] = 'None'
+        game.headers["Date"] = "123"
+        game.headers["Round"] = n_game
+        game.headers["White"] = white
+        game.headers["Black"] = black
+        game.headers["WhiteElo"] = "NA"
+        game.headers["BlackElo"] = "NA"
+        game.headers["WhiteRD"] = "NA"
+        game.headers["BlackRD"] = "NA"
+        game.headers["WhiteIsComp"] = "NA"
+        game.headers["TimeControl"] = "na"
+        game.headers["Date"] = board.result()
+        game.headers["Time"] = "na"
+        game.headers["WhiteClock"] = board.result()
+        game.headers["BlackClock"] = "na"
+        game.headers["ECO"] = "na"
+        game.headers["Plycount"] = "na"
+        game.headers["Result"] = board.result()
+
+        moves = [move for move in board.move_stack]
+        node = game.add_variation(moves.pop(0))
+        n_move = 1
+        for move in moves:
+            node = node.add_variation(move)
+            n_move += 1
+
+        # Update this path
+        path = 'C:\\Personal\\Masters Study Material\\CIS 519\\Project\\cis519chess\\games'
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        with open(path + '\\self-play.pgn'.format(n_iter=n_iter), 'a') as pgn:
+            pgn.write(game.accept(chess.pgn.StringExporter()))
+            pgn.write('\n\n')
 
 def main():
     play_match = SelfPlay()
-    play_match.mcts_one_match()
+    for i in range(200):
+        board = play_match.mcts_one_match()
+        play_match.save_pgn(board=board, n_game=i, name="MCTS", n_iter=i)
 
 if __name__ == "__main__":
     from log import setupLogging
