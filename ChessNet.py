@@ -184,6 +184,7 @@ def trainModel(model, train_loader, optimizer, criterion, num_epochs, device=Non
 
     train_errors = list()
     i = 0
+    iteru = []
     for epoch in range(num_epochs):
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
@@ -200,9 +201,10 @@ def trainModel(model, train_loader, optimizer, criterion, num_epochs, device=Non
                     100. * batch_idx / len(train_loader), loss.item()))
 
                 train_errors.append(loss.item())
+                iteru.append(i)
                 i = i + 1
 
-    plt.plot(i, train_errors, 'g', label='Training loss')
+    plt.plot(iteru, train_errors, 'g', label='Training loss')
     plt.title('Training loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
@@ -218,6 +220,7 @@ def testModel(model, test_loader, device=None):
     model.eval()
     test_loss = 0
     i = 0
+    iteru = []
     test_errors = list()
     correctS = 0
     correctE = 0
@@ -227,10 +230,12 @@ def testModel(model, test_loader, device=None):
             target = target.to(device)
             dataLen = len(data)
             output = model(data.float())
-            test_loss += torch.nn.functional.binary_cross_entropy(
+            testLossTemp = torch.nn.functional.binary_cross_entropy(
                 output, target.float(), reduction='sum').item()/dataLen  # sum up batch loss
+            test_loss += testLossTemp
+            iteru.append(i)
             i = i + 1
-            test_errors.append(test_loss)
+            test_errors.append(testLossTemp)
             outputS = output[:, :66]
             outputE = output[:, 66:]
             targetS = target[:, :66]
@@ -249,7 +254,7 @@ def testModel(model, test_loader, device=None):
         100. * correctS / len(test_loader.dataset),
         100. * correctE / len(test_loader.dataset)))
 
-    plt.plot(i, test_errors, 'g', label='Testing loss')
+    plt.plot(iteru, test_errors, 'g', label='Testing loss')
     plt.title('Testing loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
@@ -257,4 +262,3 @@ def testModel(model, test_loader, device=None):
     plt.show()
 
     return test_loss
-

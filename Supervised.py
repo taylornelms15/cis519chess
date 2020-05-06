@@ -5,6 +5,7 @@
 Handles all the torch-related parts of our networks
 """
 
+import pdb
 import logging
 import enum
 import re
@@ -19,8 +20,8 @@ import PGNIngest
 from BitBoard import BitBoard, PieceType, S2I, I2S, PIECELABELS
 from GameState import Turn, Castle, GameState, Move
 from ChessNet import ChessNet, trainModel, testModel
-
-import pdb
+import ctypes
+ctypes.cdll.LoadLibrary('caffe2_nvrtc.dll')
 
 torch.manual_seed(10)  # for reproducability or something
 
@@ -410,8 +411,6 @@ def main():
                        type=argparse.FileType("r"), nargs="+")
     group.add_argument("-t", "--tensorData", help="Filename of file containing saved tensor data of a dataset",
                        type=argparse.FileType("rb"), nargs="?")
-    group.add_argument("-e", "--epochs", help="No of epochs for training",
-                       type=int, nargs="?")
 
     args = parser.parse_args()
     if not (args.modelIn or args.pgnFiles or args.tensorData):
@@ -423,8 +422,7 @@ def main():
     supChess.trainModel(pgnTensors=args.tensorData,
                         pgnFiles=args.pgnFiles,
                         outTensor=args.outTensor,
-                        outModel=args.outModel,
-                        epochs=args.epochs)
+                        outModel=args.outModel)
 
     myState = GameState.getInitialState()
     myMove = Move("b2", "b4")
