@@ -15,10 +15,6 @@ import torch.nn as nn
 import numpy as np
 import functools
 import matplotlib.pyplot as plt
-<<<<<<< HEAD
-=======
-
->>>>>>> f05fd8a9919936d0acede4701d961764084a51b4
 import pdb
 
 
@@ -216,7 +212,7 @@ def trainModel(model, train_loader, optimizer, criterion, num_epochs, device=Non
     plt.legend()
     plt.show()
 
-    return model 
+    return model
 
 
 def testModel(model, test_loader, device=None):
