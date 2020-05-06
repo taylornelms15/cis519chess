@@ -13,6 +13,7 @@ import torch
 import argparse
 import pickle
 import types
+import matplotlib.pyplot as plt
 
 import PGNIngest
 from BitBoard import BitBoard, PieceType, S2I, I2S, PIECELABELS
@@ -21,7 +22,7 @@ from ChessNet import ChessNet, trainModel, testModel
 
 import pdb
 
-torch.manual_seed(10)#for reproducability or something
+torch.manual_seed(10)  # for reproducability or something
 
 KSIDE = 64
 QSIDE = 65
@@ -31,22 +32,24 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 Supervised Learning Model class
 """
 
+
 class ArgsFaker(object):
     """
     Class that fakes the argparse-created object so we can pass similar file/filename
     parameters into our parsing/training functions, without having to go through command line parsing
-    """ 
-    
-    def __init__(self, pgnFiles = None, tensorData = None, outModel = None, outTensor = None):
-        self.pgnFiles   = pgnFiles
+    """
+
+    def __init__(self, pgnFiles=None, tensorData=None, outModel=None, outTensor=None):
+        self.pgnFiles = pgnFiles
         self.tensorData = tensorData
-        self.outModel   = outModel
-        self.outTensor  = outTensor
+        self.outModel = outModel
+        self.outTensor = outTensor
+
 
 class SupervisedChess(object):
-    __slots__ = [ "model" ]
+    __slots__ = ["model"]
 
-    def __init__(self, savedModel = None):
+    def __init__(self, savedModel=None):
         """
         Initializes the SupervisedChess object, with an optional "already trained model" torch file
         :param savedModel:      Filepath (or open File object) for the pre-trained pytorch model
@@ -55,13 +58,15 @@ class SupervisedChess(object):
         if savedModel != None:
             try:
                 #self.model = torch.load(savedModel)
-                self.model.load_state_dict(torch.load(savedModel, map_location=device))
+                self.model.load_state_dict(
+                    torch.load(savedModel, map_location=device))
             except Exception as e:
-                logging.error("Bad input %s to SupervisedChess; need file-like or path name for torch to load" % savedModel)
+                logging.error(
+                    "Bad input %s to SupervisedChess; need file-like or path name for torch to load" % savedModel)
                 raise
         self.model = self.model.to(device)
 
-    def trainModel(self, pgnFiles = None, pgnTensors = None, outTensor = None, outModel = None):
+    def trainModel(self, pgnFiles=None, pgnTensors=None, outTensor=None, outModel=None, epochs=1):
         """
         Actually trains the SupervisedChess object
         :param pgnFiles     : Python List of filenames or open file objects that are valid pgn files.
@@ -69,27 +74,33 @@ class SupervisedChess(object):
         :param outTensor    : Optional filename or open file object to which to write the parsed pgn moves
         :param outModel     : Optional filename or open file object to which to save the trained model object
         """
-        #previously: def __init__(self, savedModel = None, pgnTensors = None, pgnFiles = None, outTensor = None, outModel = None):
+        # previously: def __init__(self, savedModel = None, pgnTensors = None, pgnFiles = None, outTensor = None, outModel = None):
+        print(epochs)
         if pgnFiles != None:
-            pgnFiles = [open(x, "r") if isinstance(x, str) else x for x in pgnFiles]
-            args = ArgsFaker(pgnFiles = pgnFiles, outTensor = outTensor, outModel = outModel)
-            self.model = self._modelFromPgnOrTensors(args)
+            pgnFiles = [open(x, "r") if isinstance(
+                x, str) else x for x in pgnFiles]
+            args = ArgsFaker(pgnFiles=pgnFiles,
+                             outTensor=outTensor, outModel=outModel)
+            self.model = self._modelFromPgnOrTensors(args, epochs=epochs)
         elif pgnTensors != None:
-            pgnTensors = open(pgnTensors, "rb") if isinstance(pgnTensors, str) else pgnTensors
-            args = ArgsFaker(tensorData = pgnTensors, outTensor = outTensor, outModel = outModel)
-            self.model = self._modelFromPgnOrTensors(args)
+            pgnTensors = open(pgnTensors, "rb") if isinstance(
+                pgnTensors, str) else pgnTensors
+            args = ArgsFaker(tensorData=pgnTensors,
+                             outTensor=outTensor, outModel=outModel)
+            self.model = self._modelFromPgnOrTensors(args, epochs=epochs)
         else:
-            raise ValueError("Cannot make a SupervisedChess object with no input data")
+            raise ValueError(
+                "Cannot make a SupervisedChess object with no input data")
 
-        #now have self.model set
+        # now have self.model set
         if outModel != None:
-            torch.save(self.model.state_dict(), outModel) 
-    
-    def _modelFromPgnOrTensors(self, args):
+            torch.save(self.model.state_dict(), outModel)
+
+    def _modelFromPgnOrTensors(self, args, epochs):
         logging.info("Loading training data:")
         dataset = getTensorData(args)
         logging.info("Training data loaded")
-        model = trainNetworkOnData(dataset, self.model)
+        model = trainNetworkOnData(dataset, self.model, epochs)
         return model
 
     @classmethod
@@ -108,13 +119,13 @@ class SupervisedChess(object):
                 raise ValueError("Invalid castle type")
             return (outTensor[indices[0]].item(), outTensor[indices[1]].item())
 
-        startTens   = outTensor[:64]
-        endTens     = outTensor[66:-2]
-        startTens   = startTens.reshape((8, 8))
-        endTens     = endTens.reshape((8, 8))
+        startTens = outTensor[:64]
+        endTens = outTensor[66:-2]
+        startTens = startTens.reshape((8, 8))
+        endTens = endTens.reshape((8, 8))
 
-        startUtil   = startTens[move.startLoc].item()
-        endUtil     = endTens[move.endLoc].item()
+        startUtil = startTens[move.startLoc].item()
+        endUtil = endTens[move.endLoc].item()
 
         return (startUtil, endUtil)
 
@@ -138,15 +149,18 @@ class SupervisedChess(object):
         gameTensor = gameStateToTensor(gameState)
         gameTensor = gameTensor.to(device)
 
-        outTensor = self.model.forward(torch.unsqueeze(gameTensor, 0).float())[0]
-    
-        utilities       = {x: self._outTensorUtilitiesForMove(outTensor, x) for x in legalMoves}
-        utilCombined    = {x: self._utilPairToScore(y) for x, y in utilities.items()}
-        utilCombined    = [(x, y) for x, y in utilCombined.items()]
-        utilSorted      = sorted(utilCombined, key=lambda tup: tup[1], reverse = True)
-        justUtilities   = np.array([x[1] for x in utilSorted])
-        justUtilities   /= np.sum(justUtilities) 
-        utilSorted      = [(x[0], y) for x, y in zip(utilSorted, justUtilities)]
+        outTensor = self.model.forward(
+            torch.unsqueeze(gameTensor, 0).float())[0]
+
+        utilities = {x: self._outTensorUtilitiesForMove(
+            outTensor, x) for x in legalMoves}
+        utilCombined = {x: self._utilPairToScore(
+            y) for x, y in utilities.items()}
+        utilCombined = [(x, y) for x, y in utilCombined.items()]
+        utilSorted = sorted(utilCombined, key=lambda tup: tup[1], reverse=True)
+        justUtilities = np.array([x[1] for x in utilSorted])
+        justUtilities /= np.sum(justUtilities)
+        utilSorted = [(x[0], y) for x, y in zip(utilSorted, justUtilities)]
 
         return utilSorted
 
@@ -160,12 +174,11 @@ class SupervisedChess(object):
         move, weight = self.getMovePreferenceList(gameState, legalMoves)[0]
         return move
 
-    
-
 
 """
 Utility functions - converting our game objects to/from tensors for CNN purposes
 """
+
 
 def moveToTensor(move):
     """
@@ -179,18 +192,18 @@ def moveToTensor(move):
     if move.castle != None:
         if move.castle == Castle.WKING or move.castle == Castle.BKING:
             startLoc = KSIDE
-            endLoc   = KSIDE
+            endLoc = KSIDE
         else:
             startLoc = QSIDE
-            endLoc   = QSIDE
+            endLoc = QSIDE
     else:
-        startLoc    = move.startLoc[0]  * 8 + move.startLoc[1]
-        endLoc      = move.endLoc[0]    * 8 + move.endLoc[1]
+        startLoc = move.startLoc[0] * 8 + move.startLoc[1]
+        endLoc = move.endLoc[0] * 8 + move.endLoc[1]
 
-    retStart            = np.zeros((66,), dtype = np.bool)
-    retEnd              = np.zeros((66,), dtype = np.bool)
-    retStart[startLoc]  = 1
-    retEnd[endLoc]      = 1
+    retStart = np.zeros((66,), dtype=np.bool)
+    retEnd = np.zeros((66,), dtype=np.bool)
+    retStart[startLoc] = 1
+    retEnd[endLoc] = 1
 
     retval = np.concatenate((retStart, retEnd), axis=0)
 
@@ -199,17 +212,18 @@ def moveToTensor(move):
 
     return torch.from_numpy(retval.astype(np.float))
 
+
 def tensorToMove(tensor):
     """
     Used on the output of the neural network to translate it to a (legal?) move
     """
-    #Thought: should we make an actual Move from this? Or is that unnecessary?
+    # Thought: should we make an actual Move from this? Or is that unnecessary?
 
     retval = [None, None]
-    tensorS     = tensor[:66]
-    tensorE     = tensor[66:]
-    startRaw    = tensorS.argmax()
-    endRaw      = tensorE.argmax()
+    tensorS = tensor[:66]
+    tensorE = tensor[66:]
+    startRaw = tensorS.argmax()
+    endRaw = tensorE.argmax()
     if (startRaw > 63):
         retval[0] = "cast"
     else:
@@ -219,7 +233,7 @@ def tensorToMove(tensor):
     else:
         retval[1] = I2S((endRaw / 8, endRaw % 8))
     return retval
-    
+
 
 def gameStateToTensor(gameState):
     """
@@ -228,29 +242,33 @@ def gameStateToTensor(gameState):
     Initial attempt: each bitboard is a "channel"
     Make one additional channel for the turn and castles metadata
     """
-    bitBoards   = gameState.getBitboards()#[np.darray(64,64), ...](len 6) (type: actually a BitBoard)
-    turn        = gameState.getTurn()#Turn (int)
-    castles     = gameState.getPossibleCastles()#[bool, bool, bool, bool]
-    halfmove    = gameState.getHalfmoveClock()#int (for now: unused)
+    bitBoards = gameState.getBitboards(
+    )  # [np.darray(64,64), ...](len 6) (type: actually a BitBoard)
+    turn = gameState.getTurn()  # Turn (int)
+    castles = gameState.getPossibleCastles()  # [bool, bool, bool, bool]
+    halfmove = gameState.getHalfmoveClock()  # int (for now: unused)
 
-    #notably: each should be within an int8 (halfmove would change this, but ignoring for now)
+    # notably: each should be within an int8 (halfmove would change this, but ignoring for now)
 
     #retval = np.array([turn, castles[0], castles[1], castles[2], castles[3], 0, 0, 0], dtype=np.int8).reshape((1, 8))
     firstLayer = np.zeros((8, 8), dtype=np.int8)
-    #put the castles in the corner, turn in the middle (making this up)
+    # put the castles in the corner, turn in the middle (making this up)
     firstLayer[0:2, 0:2] = castles[Castle.WQUEEN]
     firstLayer[0:2, 6:8] = castles[Castle.WKING]
     firstLayer[6:8, 0:2] = castles[Castle.BQUEEN]
     firstLayer[6:8, 6:8] = castles[Castle.BKING]
     firstLayer[2:6, 2:6] = turn
 
-    retval = np.stack([firstLayer] + [x.getRawBoard() for x in bitBoards], axis=0)
+    retval = np.stack([firstLayer] + [x.getRawBoard()
+                                      for x in bitBoards], axis=0)
 
     return torch.from_numpy(retval)
+
 
 """
 Functions dealing with the "probability dictionary" directly (no network involved, just stores play information)
 """
+
 
 def stateMoveArraysToProbDict(states, moves):
     """
@@ -274,13 +292,14 @@ def stateMoveArraysToProbDict(states, moves):
 
         retval[state] = moveTotals
 
-
     return retval
+
 
 """
 Data loading/processing from out of the pgnIngest functions
 Also, some of the data processing/training
 """
+
 
 def getStateMoveArrays(args):
 
@@ -289,14 +308,15 @@ def getStateMoveArrays(args):
     for pgnFile in args.pgnFiles:
         rawData += PGNIngest.parseAllLinesInFile(pgnFile)
     states = []
-    moves  = []
+    moves = []
 
     for gameListing in rawData:
         otherWay = list(zip(*gameListing))
         states += list(otherWay[0])
-        moves  += list(otherWay[1])
+        moves += list(otherWay[1])
 
     return (states, moves)
+
 
 def getTensorData(args):
     """
@@ -315,19 +335,19 @@ def getTensorData(args):
         else:
             raise ValueError("Need pgnFiles on args object")
 
-        #if args.outPickle != None:
+        # if args.outPickle != None:
         #    outTuple = (states, moves)
         #    pickle.dump(outTuple, args.outPickle)
 
         #probDict = stateMoveArraysToProbDict(states, moves)
-        
-        #if args.outDict != None:
+
+        # if args.outDict != None:
         #    pickle.dump(probDict, args.outDict)
 
         states = torch.stack([gameStateToTensor(x) for x in states])
-        moves  = torch.stack([moveToTensor(x)      for x in moves])
+        moves = torch.stack([moveToTensor(x) for x in moves])
 
-        fullDataset = torch.utils.data.TensorDataset(states, moves)            
+        fullDataset = torch.utils.data.TensorDataset(states, moves)
 
         if args.outTensor != None:
             torch.save(fullDataset, args.outTensor)
@@ -339,38 +359,42 @@ def getTensorData(args):
         if args.outTensor != None:
             torch.save(fullDataset, args.outTensor)
         return fullDataset
-        #TODO: do something to load the dataset from file here
+        # TODO: do something to load the dataset from file here
 
-def trainNetworkOnData(dataset, model = None, learn_rate = 0.001):
+
+def trainNetworkOnData(dataset, model=None, learn_rate=0.001, epochs=1):
     """
     Takes in our TensorDataset, trains a ChessNet on it
     """
-    
+
     if model == None:
         model = ChessNet()
-    #Potential expansion: putting things onto the GPU for training (relevant if on computer with GPU, which I am not)
+    # Potential expansion: putting things onto the GPU for training (relevant if on computer with GPU, which I am not)
     logging.info("Starting ChessNet Training:")
 
     numItems = len(dataset)
-    train, valid = torch.utils.data.random_split(dataset, (int(numItems * 0.8), numItems - int((numItems * 0.8))))
+    train, valid = torch.utils.data.random_split(
+        dataset, (int(numItems * 0.8), numItems - int((numItems * 0.8))))
 
+    trainloader = torch.utils.data.DataLoader(
+        train, batch_size=128, shuffle=True)
+    validloader = torch.utils.data.DataLoader(
+        valid, batch_size=128, shuffle=True)
 
-    trainloader = torch.utils.data.DataLoader(train, batch_size=128, shuffle=True)
-    validloader = torch.utils.data.DataLoader(valid, batch_size=128, shuffle=True)
-
-
-    optimizer = torch.optim.Adam(model.parameters(), lr = learn_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learn_rate)
     criterion = torch.nn.BCELoss()
-    
-    model = trainModel(model, trainloader, optimizer, criterion, num_epochs=1)
+
+    model = trainModel(model, trainloader, optimizer, criterion, epochs)
     testModel(model, validloader)
     #testModel(model, trainloader)
 
     return model
 
+
 """
 Main, command line parsing
 """
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -378,60 +402,61 @@ def main():
                         type=argparse.FileType("wb"), nargs="?")
     parser.add_argument("-M", "--outModel", help="File to which to write out loaded, parsed, and trained model",
                         type=argparse.FileType("wb"), nargs="?")
-    group = parser.add_argument_group("Source Data", "Data source for the Supervised model")
+    group = parser.add_argument_group(
+        "Source Data", "Data source for the Supervised model")
     group.add_argument("-m", "--modelIn", help="File containing saved trained model",
-                        type=argparse.FileType("rb"), nargs="?")
+                       type=argparse.FileType("rb"), nargs="?")
     group.add_argument("-p", "--pgnFiles", help="Filename(s) of pgn games to load",
-                        type=argparse.FileType("r"), nargs="+")
+                       type=argparse.FileType("r"), nargs="+")
     group.add_argument("-t", "--tensorData", help="Filename of file containing saved tensor data of a dataset",
-                        type = argparse.FileType("rb"), nargs="?")
-
-                        
+                       type=argparse.FileType("rb"), nargs="?")
+    group.add_argument("-e", "--epochs", help="No of epochs for training",
+                       type=int, nargs="?")
 
     args = parser.parse_args()
     if not (args.modelIn or args.pgnFiles or args.tensorData):
-        parser.error("Must have Source Data; use --modelIn, --pgnFiles, or --tensorData option")
+        parser.error(
+            "Must have Source Data; use --modelIn, --pgnFiles, or --tensorData option")
         exit()
 
-    supChess = SupervisedChess(savedModel = args.modelIn)
-    supChess.trainModel(pgnTensors = args.tensorData,
-                       pgnFiles   = args.pgnFiles,
-                       outTensor  = args.outTensor,
-                       outModel   = args.outModel)
+    supChess = SupervisedChess(savedModel=args.modelIn)
+    supChess.trainModel(pgnTensors=args.tensorData,
+                        pgnFiles=args.pgnFiles,
+                        outTensor=args.outTensor,
+                        outModel=args.outModel,
+                        epochs=args.epochs)
 
     myState = GameState.getInitialState()
-    myMove  = Move("b2", "b4")
+    myMove = Move("b2", "b4")
 
-    legalMoves = [\
-                  Move('a2', 'a3'),
-                  Move('a2', 'a4'),
-                  Move('b2', 'b3'),
-                  Move('b2', 'b4'),
-                  Move('c2', 'c3'),
-                  Move('c2', 'c4'),
-                  Move('d2', 'd3'),
-                  Move('d2', 'd4'),
-                  Move('e2', 'e3'),
-                  Move('e2', 'e4'),
-                  Move('f2', 'f3'),
-                  Move('f2', 'f4'),
-                  Move('g2', 'g3'),
-                  Move('g2', 'g4'),
-                  Move('h2', 'h3'),
-                  Move('h2', 'h4'),
-                  Move('b1', 'a3'),
-                  Move('b1', 'c3'),
-                  Move('g1', 'f3'),
-                  Move('g1', 'h3'),
-                  ]
+    legalMoves = [
+        Move('a2', 'a3'),
+        Move('a2', 'a4'),
+        Move('b2', 'b3'),
+        Move('b2', 'b4'),
+        Move('c2', 'c3'),
+        Move('c2', 'c4'),
+        Move('d2', 'd3'),
+        Move('d2', 'd4'),
+        Move('e2', 'e3'),
+        Move('e2', 'e4'),
+        Move('f2', 'f3'),
+        Move('f2', 'f4'),
+        Move('g2', 'g3'),
+        Move('g2', 'g4'),
+        Move('h2', 'h3'),
+        Move('h2', 'h4'),
+        Move('b1', 'a3'),
+        Move('b1', 'c3'),
+        Move('g1', 'f3'),
+        Move('g1', 'h3'),
+    ]
 
     bestMove = supChess.getMovePreference(myState, legalMoves)
     logging.info("Best move registered as %s" % bestMove)
-
 
 
 if __name__ == "__main__":
     from log import setupLogging
     setupLogging()
     main()
-
