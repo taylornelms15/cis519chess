@@ -7,6 +7,8 @@ from GameState import Turn, Castle, GameState, Move
 from BitBoard import BitBoard, PieceType, BitBoardsFromFenString, FENParseString, S2I, I2S, Occupier, PIECELABELS
 # from mcts1 import Node
 from mcts_zero import MCTS
+import ctypes
+ctypes.cdll.LoadLibrary('caffe2_nvrtc.dll')
 
 
 class SelfPlay:
