@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import functools
+import matplotlib.pyplot as plt
 
 import pdb
 
@@ -166,9 +167,13 @@ class ChessNet(torch.nn.Module):
 def trainModel(model, train_loader, optimizer, criterion, num_epochs, device = None):
     if device == None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        print(device)
+    train_errors = []
+    i = 0
     for epoch in range(num_epochs):
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
+            # print("New")
             data = data.to(device)
             target = target.to(device)
             optimizer.zero_grad()
@@ -181,6 +186,16 @@ def trainModel(model, train_loader, optimizer, criterion, num_epochs, device = N
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss.item()))
 
+                train_errors.append(loss.item())
+                i = i + 1
+
+    plt.plot(i, train_errors, 'g', label='Training loss')
+    plt.title('Training loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
+
     return model 
 
 
@@ -191,6 +206,9 @@ def testModel(model, test_loader, device = None):
     test_loss = 0
     correctS = 0
     correctE = 0
+
+    test_error = []
+    i = 0
     with torch.no_grad():
         for data, target in test_loader:
             data        = data.to(device)
@@ -198,6 +216,8 @@ def testModel(model, test_loader, device = None):
             dataLen     = len(data)
             output      = model(data.float())
             test_loss   += torch.nn.functional.binary_cross_entropy(output, target.float(), reduction='sum').item()/dataLen  # sum up batch loss
+            test_error.append(test_loss)
+            i+=1
             outputS = output[:, :66]
             outputE = output[:, 66:]
             targetS = target[:, :66]
@@ -214,6 +234,12 @@ def testModel(model, test_loader, device = None):
         100. * correctS / len(test_loader.dataset),
         100. * correctE / len(test_loader.dataset)))
 
+    plt.plot(i, test_error, 'g', label='Test loss')
+    plt.title('Testing loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
 
     return test_loss
 
